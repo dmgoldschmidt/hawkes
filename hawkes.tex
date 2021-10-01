@@ -1,0 +1,273 @@
+\documentclass[12pt,leqno]{article}
+\include{article_defs}
+\title{A Primer on the Hawkes Process}
+\author{David M. Goldschmidt}
+%\oddsidemargin 10 pt \evensidemargin 10 pt \marginparwidth 0.75 in \textwidth
+%6.0 true in \topmargin -40 pt \textheight 8.8 true in 
+%\usepackage{fancyhdr}
+%\pagestyle{fancy}
+%\lfoot{}
+%\rfoot{\thepage}
+\begin{document}
+%\renewcommand{\footrulewidth}{0.4pt}
+\newcommand{\p}{\ensuremath{u}}
+\newcommand{\VV}{V}
+\maketitle
+
+
+\section{Introduction}
+In this expository paper, we review the basics of the Hawkes process, step by step.
+
+\section{The Exponential Probability Density}
+The exponential density with rate $\lambda$ is defined on the non-negative real line and has the probability
+density function
+\begin{equation}
+  f_{\lambda}(t) := {\lambda}e^{-\lambda{t}}.
+\end{equation}
+The reason the parameter $\lambda$ is called the {\em rate} is that the expected value of $f_{\lambda}$ can be found by
+integrating by parts:
+\begin{align*}
+E_{\lambda} &= \lambda\left(\int_0^{\infty}te^{-\lambda{t}}dt\right) = \lambda\left(\lambda^{-1}{t}e^{-\lambda{t}}\biggr\rvert_0^{\infty}
+-\lambda^{-1}\int_0^{\infty}e^{-\lambda{t}}dt\right)\\
+&= \lambda(\lambda^{-2}) = \lambda^{-1}.
+\end{align*}
+So if a sequence of events is arriving with the {\em inter-arrival time} $\tau$ between successive events
+distributed as $f_{\lambda}(\tau)$, then the expected value of $\tau$ is $\lambda^{-1}$ units of time per
+event, which means that the mean rate of arrivals is $\lambda$ events per unit of time.
+
+We can sample from this density as follows.  Let
+\begin{equation} \label{y=F(t)}
+y = F_{\lambda}(t) := \int_0^{t}f_{\lambda}(\tau)d\tau = -e^{-\lambda\tau}\biggr\rvert_0^t = 1 - e^{-\lambda{t}}
+\end{equation}
+be the cumulative distribution function of $f_{\lambda}$. Then $y$ is a random variable on $[0,1]$ which we claim
+is uniformly distributed.  Namely, let $y_0 = F_{\lambda}(t_0)$, then the probability that $y$ lies between $y_0$ and
+$y_0+dy$ is the same as the probability that $t$ lies between $t_0$ and $t_0+dt$, which is the area of the
+infinitesmal rectangle $f_{\lambda}(t_0)dt$  under $f_{\lambda}(t)$.  Since $dy = F'_{\lambda}(t)dt = f_{\lambda}(t)dt$,
+we conclude that $y$ is uniformly distributed as claimed.\footnote{This argument is completely general.  It has nothing to do with the details of the density $f_{\lambda}$.}
+
+Now from \eqref{y=F(t)} we obtain
+\begin{equation}\label{t=Finv(y)}
+  e^{-\lambda{t}} = 1 -y,\quad\text{hence}\quad t = -\frac{\log(1-y)}{\lambda}.
+\end{equation}
+Thus, to sample $t$ according to the density $f_{\lambda}(t)$, we first sample $y$ uniformly and then apply
+\eqref{t=Finv(y)}.
+
+\section{The EM algorithm}
+In this section we review the application of EM algorithm to mixture densities.
+
+\subsection{The Q-function}\label{Qf} 
+\begin{Lem}\label{Qfunct} Suppose that $f_1(x),\dots,f_n(x)$ are positive real-valued functions.
+Let $f(x):= \sum_{i=1}^nf_i(x)$, and define 
+$$
+Q(x',x):= \sum_{i=1}^nf_i(x')\log(f_i(x)).
+$$
+Then $ f(x) - f(x') \ge Q(x',x) - Q(x',x')$ with equality only if
+$Q(x',x) = Q(x',x')$.
+\end{Lem}
+\begin{proof}
+The equation of the tangent line to the graph of $y = \log(x)$ at $x = 1$ is $y = x - 1$.
+Since $\log(x)$ is concave down, it follows that 
+$\log(x) \le x - 1$, with equality if and only if $x = 1$. Using this, we have
+\begin{align*}
+Q(x',x) - Q(x',x') &= \sum_{i=1}^nf_i(x')[\log(f_i(x) - \log(f_i(x'))] \\
+&= \sum_{i=1}^nf_i(x')\log(f_i(x)/f_i(x')) \\
+&\le \sum_{i=1}^nf_i(x')[f_i(x)/f_i(x') - 1] \\
+&= \sum_{i=1}^n[f_i(x) - f_i(x')] \\
+&= f(x) - f(x'),
+\end{align*}
+with equality if and only if $f_i(x)/f_i(x') = 1$ for all $i$.
+\end{proof}
+
+Of course, the point is that it is often possible to write a (log-)likelihood
+function $L(\theta)$ as a sum $L(\theta) = \sum_iL_i(\theta)$ where $L_i(\theta)$ has
+a relatively simple form. Then given a set of parameters $\theta'$, we can find a
+more likely set $\theta$ by choosing $\theta$ so that $Q(\theta',\theta) >
+Q(\theta',\theta')$.  In practice, we usually maximize $Q(\theta',\theta)$ as a function of
+$\theta$.  We can then replace $\theta'$ by $\theta$ and iterate until a {\em
+  local} maximum of $L(\theta)$ is reached.    This iteration is referred to in the literature
+as the EM algorithm.
+
+\subsection{Mixture Densities}\label{MD}
+A standard application of the $Q$-function technology is to the maximum
+likelihood problem for a mixture density.  Here we have a set of
+probability densities $p_1(\eta;y),\dots,p_s(\eta;y)$ where $\eta$
+denotes a set of parameters and $y$ is an observation.  The yoga is that there
+is a "hidden state" $i\in\{1,2,\dots,s\}$ such that $p_i(\eta;y)$ is the
+conditional probability density of $y$ given parameters $\eta$ and state $i$.
+
+Given a vector $\omega:= \{\omega_1,\dots,\omega_n\}$ of state probabilities, we put
+$\theta:= (\eta,\omega)$.  The mixture density is then
+$$
+p(\theta;y) = \sum_{i=1}^s\omega_ip_i(\eta;y).
+$$
+
+Now suppose we are given a sequence $\{y_1,\dots,y_N\}$ of observations which we
+assume are i.i.d. samples from this density,
+and we want choose parameters $\theta$ to maximize the likelihood of the observations.
+The likelihood function is  
+\begin{equation*} \begin{split} 
+L(\theta)
+&:= \prod_{n=1}^N\sum_{i=1}^s\omega_ip_i(\eta,y_n) \\ 
+&=
+\sum_{i_1,\dots,i_N=1}^s\prod_{n=1}^N\omega_{i_n}p_{i_n}(\eta,y_n), \\ 
+\end{split} 
+\end{equation*} 
+and the $Q$-function for this sum is 
+$$
+Q(\theta',\theta) = \sum_{i_1,\dots,i_N=1}^s\prod_{n=1}^N\omega'_{i_n}p_{i_n}(\eta';y_n)
+\sum_{k=1}^N\log(\omega_{i_k}p_{i_k}(\eta;y_k)).
+$$
+The good news here is that there is a significant simplification of this expression.
+Namely, the coefficient of $\log(\omega_mp_m(\eta;y_n))$ in the above sum is given by
+\begin{align*}
+\omega'_mp_m(\eta';y_n)\sum_{I:i_n = m}\prod_{j\neq n}\omega'_{i_j}p_{i_j}(\eta';y_j )
+&=\omega'_mp_m(\eta';y_n)\prod_{j\neq n}\sum_{i=1}^s\omega'_ip_i(\eta';y_j)\\
+&= \frac{\omega'_mp_m(\eta';y_n)}{p(\theta';y_n)}\prod_{j=1}^Np(\theta';y_j).
+\end{align*}
+Note that the quantity 
+\begin{equation}\label{omega_mn}
+\omega'_{mn} := \frac{\omega'_mp_m(\eta';y_n)}{p(\theta';y_n)}
+\end{equation}
+is the conditional probability of state $m$ at observation time $n$, given observation $y_n$ 
+and parameters $\eta'$.
+Thus, dividing by the constant $\prod_jp(\theta',y_j)$ and changing notation, the function to be
+maximized is
+\begin{equation}\label{Qfunc:0}
+\tilde{Q}(\theta',\theta) := \sum_{m=1}^s\sum_{n=1}^N\omega'_{mn}\log(\omega_mp_m(\eta;y_n)),
+\end{equation}
+where, as above, $\omega'$ denotes the prior value, while $\omega$ and $\eta$ are the unknown parameters
+to be solved for which will maximize $\tilde{Q}$.
+
+
+\section{The Poisson Process}
+For our purposes, a Poisson process of rate $\lambda$ will be defined as an increasing sequence of random variables
+$ \{0 < T_1 < T_2 < \dots\}$ defined on $(0,\infty)$ such that $\{\tau_i = T_i-T_{i-1}~|~ i = 1,2,\dots\}$ are i.i.d.
+exponential of rate $\lambda$. We often think of $T_i$ as the time of occurence of the $i^{th}$
+event, where often the event is the arrival of something.  So in the following, we will call the $T_i$
+``arrival times'' and the $\tau_i$ ``inter-arrival times''.  The probability density of any finite set of arrival times
+$S_n = \{T_1 = t_1 < T_2 = t_2<\dots<T_n = t_n\}$ is easy to compute. Using independence we see that
+\begin{equation}\label{arr_seq}
+Pd(S_n) = \prod_{i=1}^n\lambda{e}^{-\lambda(t_i - t_{i-1})} = \lambda^ne^{-\lambda\sum_{i = 1}^n(t_i-t_{i-1})} = \lambda^ne^{-\lambda{t_n}}.
+\end{equation}
+In particular, the density of any particular arrival sequence does not depend on the intermediate arrival times
+at all, only on the number of arrivals and the time of the last arrival.
+
+Now, the actual quantity of interest here
+is $Pd(T_n = t)$, the probability density that the $n^{th}$ arrival occurs at time $t$.
+\begin{Thm}
+  Let $\{0 < T_1<\dots<T_n<... \}$ be a Poisson process of rate $\lambda$.  Then
+  \begin{equation}\label{erlang}
+  Pd(T_n = t) = \frac{\lambda^nt^{n-1}}{(n-1)!}e^{-\lambda{t}}.
+  \end{equation}
+  \begin{proof}
+    Put $\tau_i = t_i - t_{i-1}$ for all $i$ as above. Then the $\tau_i$ are i.i.d. exponential of rate $\lambda$, and
+    $t_j = \sum_{i=1}^j \tau_i$ for all $j$.  In particular $t_1 = \tau_1$ so the theorem is trivial for $n = 1$.
+    Inductively, assume that it holds for $n-1$. Then $t = t_{n-1} + \tau_n$ is the sum of two independent random
+    variables and hence $Pd(T_n = t)$ is the convolution
+    \begin{align*}
+      Pd(T_n = t) &= Pd(T_{n-1} = s)*({\lambda}e^{-\lambda(t-s)})\\
+      &= \lambda\int_{s=0}^t\frac{\lambda^{n-1}s^{n-2}}{(n-2)!}e^{-\lambda{s}}e^{-\lambda(t-s)}ds \\
+      &= \frac{\lambda^n}{(n-2)!)}e^{-\lambda{t}}\int_{s=0}^ts^{n-2}ds \\
+      &= \frac{\lambda^nt^{n-1}}{(n-1)!}e^{-\lambda{t}}.
+    \end{align*}
+  \end{proof}
+\end{Thm}
+
+By integrating \eqref{erlang} over the interval $0<t<=T$, we obtain
+\begin{Cor}
+  For a Poisson process of rate $\lambda$ as in the theorem, the probability that the $n^{th}$ arrival occurs in
+  a given interval $(0,T)$ is
+  \begin{equation}\label{poisson}
+  \frac{\lambda^nT^{n}}{n!}e^{-\lambda{T}}.
+  \end{equation}
+  \qed
+\end{Cor}
+
+Next, we recall Horner's rule for polynomial evaluation, namely for any positive integer $m$ and any
+real number $x$, we define
+$$
+f_0(m,x) = 1\quad\text{and}\quad f_{k+1}(m,x) = 1+\frac{x}{m-k}f_k(m,x)\quad(0\le k\le m-1).
+$$
+Then
+$$
+f_m(m,x) = \sum_{k=0}^m\frac{x^k}{k!}.
+$$
+Horner's rule is easy to verify by induction, and is more efficient and more numerically stable than the
+naive algorithm.
+
+\begin{Cor}\label{Pr(obs|state)}
+  For a Poisson process of rate $\lambda$ as in the theorem, the probability density that the $k^{th}$ arrival occurs at
+  time $t$ for some $k \le n$ is
+  \begin{equation}
+    {\lambda}e^{-\lambda{t}}\sum_{k=0}^{n-1}\frac{(\lambda{t})^k}{k!} = {\lambda}e^{-\lambda{t}}f_{n-1}(n-1,\lambda{t}),
+  \end{equation}
+\end{Cor}\qed
+
+\section{The Hawkes Process}
+We now introduce dependencies among the arrival times $T_i$, by allowing each arrival event 
+to spawn a new Poisson process, which we call a child process as opposed to the original process which we
+call the base process.  This leads to a view of the
+Hawkes process as a branching Poisson process.  However there is one important difference between the base process and
+all the child processes.  Namely, the base process has a constant rate $\lambda_0$ \footnote{This can be generalized to a time-dependent rate, but it is usually not exponentially decaying.} while the child processes
+all have exponentially decaying rates.  In particular, suppose we observe arrival times $t_1,\dots,t_N$.  Then for $i>0$, the $j^{th}$ process which is spawned at arrival time $t_j$, has rate
+\begin{equation}\label{child_rate}
+\lambda_j(t) :=
+\begin{cases}
+  {\mu}e^{-\nu(t-t_j)}\quad\text{for $t > t_j$}\\
+  0\quad\text{for $t \le t_j$}.
+\end{cases}
+\end{equation}
+where $\mu$ and $\nu$ are parameters of the model.
+
+There is one further important generalization, namely we may see
+different types of events.\footnote{Event types are often called ``marks'' in the literature, and a process with different
+  event types is called a ``marked process''.}  Suppose there are $K$ different event types, which we will label $1,\dots,K$.
+Then our observations are pairs $(t_i,k_i)$ meaning that an event of type $k_i$ has occured at time $t_i$.  In this
+case we allow the decay parameters for process $j$ to depend on $k_j$:
+\begin{equation}\label{marked_lambda}
+\lambda_j(t,k) =
+\begin{cases}
+  \mu_{k_j}e^{-\nu_{k_j}(t-t_j)}\quad\text{for $t > t_j$}\\
+  0\quad\text{for $t \le t_j$}.
+\end{cases}
+\end{equation}
+To keep things simple, we will only consider the unmarked case, leaving the marked case to the reader.
+
+We want to explain an observed arrival stream $\{t_1,\dots,t_N\}$ as the output
+of a Hawkes process by choosing the above parameters to maximize the likelihood of the observations.  Denote the base
+process by ${\cal{P}}_0$ and  the child process spawned at arrival time $t_j$ by ${\cal{P}}_j$,
+for $j > 0$.  Then if the event $T_i = t_i$ was generated by process ${\cal{P}}_j$ for some $j < i$
+its density is
+$$
+p_{ij} :=  {\lambda_j(t_i)}e^{-(t_i-t_j)\lambda_j(t_i)}f_m(m,(t_i-t_j)\lambda_j(t_i)),
+$$
+by \eqref{Pr(obs|state)}, where $m = i-j-1$ and $\lambda_j(t)$ is defined in \eqref{child_rate}.
+
+Unfortunately, however, the value of $j$ is not observed, so we can't use \eqref{Pr(obs|state)} directly. Instead,
+we define a hidden state space $S := \{1,2,\dots,N\}$ and assume that $j\in{S}$ with probability $\omega_j$.
+Then we have the mixture density
+\begin{equation}
+  Pd(T_i = t) = \sum_{j = 0}^{i-1}\omega_jp_{ij},
+\end{equation}
+and \eqref{Qfunc:0} becomes
+$$
+\tilde{Q} = \sum_{i=1}^N\sum_{j=1}^N\omega_{ij}'\log(\omega_ip_{ij}),
+$$
+where, following \eqref{omega_mn}, $\omega'_{ij}$ is the (prior) conditional density of the event $T_i=t_i$,
+given that it was generated by process ${\cal{P}}_j$.
+
+At first glance, it appears that we might have a large number of states because $N$ is the number of observations
+which could be large.  However, note first that $p_{ij} = 0$ for $j \ge i$, and second that $\omega_{ij}$ decays
+exponentially in $t_i-t_j$, so in practice we can ignore states $j << i$.
+
+
+
+
+There is another view of the Hawkes process as an inhomogeneous Poisson process whose intensity changes by positive
+jumps at each arrival time.  The two views are mathematically equivalent, but we will take the branching view here.
+
+ 
+
+\end{document}
+
+
