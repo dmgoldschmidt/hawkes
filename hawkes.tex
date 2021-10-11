@@ -139,7 +139,7 @@ where, as above, $\omega'$ denotes the prior value, while $\omega$ and $\eta$ ar
 to be solved for which will maximize $\tilde{Q}$.
 
 
-\section{The Poisson Process}
+\section{The Homogeneous Poisson Process}
 For our purposes, a Poisson process of rate $\lambda$ will be defined as an increasing sequence of random variables
 $ \{0 < T_1 < T_2 < \dots\}$ defined on $(0,\infty)$ such that $\{\tau_i = T_i-T_{i-1}~|~ i = 1,2,\dots\}$ are i.i.d.
 exponential of rate $\lambda$. We often think of $T_i$ as the time of occurence of the $i^{th}$
@@ -166,7 +166,7 @@ is $Pd(T_n = t)$, the probability density that the $n^{th}$ arrival occurs at ti
     variables and hence $Pd(T_n = t)$ is the convolution
     \begin{align*}
       Pd(T_n = t) &= Pd(T_{n-1} = s)*({\lambda}e^{-\lambda(t-s)})\\
-      &= \lambda\int_{s=0}^t\frac{\lambda^{n-1}s^{n-2}}{(n-2)!}e^{-\lambda{s}}e^{-\lambda(t-s)}ds \\
+      &= \lambda\int_{s=0}^t\frac{\lambda^{n-1}s^{n-2}}{(n-2)!}e^{-\lambda{s}}{\lambda}e^{-\lambda(t-s)}ds \\
       &= \frac{\lambda^n}{(n-2)!)}e^{-\lambda{t}}\int_{s=0}^ts^{n-2}ds \\
       &= \frac{\lambda^nt^{n-1}}{(n-1)!}e^{-\lambda{t}}.
     \end{align*}
@@ -182,6 +182,34 @@ By integrating \eqref{erlang} over the interval $0<t<=T$, we obtain
   \qed
 \end{Cor}
 
+\section{The Inhomogeneous Poisson Process}
+We next consider a generalization of the Poisson process in which we allow the rate $\lambda$ to vary with time.
+Among the infinitely many ways this might be done, we will consider here only a simple exponential decay model:
+\begin{equation}\label{exp_rate}
+  \lambda(t) := {\sigma}e^{-\rho{t}}
+\end{equation}
+where $\sigma$ and $\rho$ are known non-negative decay parameters.
+Then the expected number of arrivals in the interval $[t_0,t_1]$ is
+\begin{equation}\label{N_hat}
+  \hat{n}(t_0,t_1) := \int_{t_0}^{t_1}\lambda(t)dt = \frac{\sigma}{\rho}e^{-\rho{t_0}}(1 - e^{-\rho(t_1-t_0)}),
+\end{equation}
+and the mean rate in that interval is
+\begin{equation}\label{lambda_hat}
+  \hat{\lambda}(t_0,t_1) := \frac{\hat{n}(t_0,t_1)}{t_1 - t_0}.
+\end{equation}
+Note that the in special case $\rho = 0$, which is just the homogeneous case with rate $\sigma$,
+$\hat{m}(t_0,t_1) = \sigma(t_1-t_0)$ and $\hat{\lambda}(t_0,t_1) = \sigma$.
+
+In the sequel, we will approximate an inhomogenous Poisson process with exponentially decaying rate $\lambda(t)$
+in an interval $[t_0,t_1]$ by the homogeneous Poisson process with rate $\hat{\lambda}(t_0,t_1)$.  In particular,
+\eqref{erlang} becomes
+\begin{equation}\label{erlang:1}
+  Pd(T_n = t) = \frac{\hat{\lambda}(0,t)^nt^{n-1}}{(n-1)!}e^{-t\hat{\lambda}(0,t)},
+\end{equation}
+and if $n$ is a random variable whose distribution is known but whose value is unknown, we will further approximate
+\eqref{erlang} by substituting $\hat{n}(0,t)$ for $n$ in \eqref{erlang:1}.
+
+
 \section{The Hawkes Process}
 \subsection{A branching Poisson process}
 We now introduce dependencies among the arrival times $T_i$, by allowing each arrival event 
@@ -190,12 +218,12 @@ call the base process.  This leads to a view of the Hawkes process as a branchin
 is another view of the Hawkes process as an inhomogeneous Poisson process whose intensity changes by positive
 jumps at each arrival time.  The two views are mathematically equivalent, but we will take the branching view here.
 
-There is one important difference between the base process and all the child processes.  Namely, the base process
+An important difference between the base process and all the child processes is that the base process
 has a constant rate $\lambda_0$ \footnote{This can be generalized to a time-dependent rate, but it is usually not exponentially decaying.} while the child processes all have exponentially decaying rates.  We denote the base
 process by $\P_0$ and the child process spawned at arrival time
 $t_j~(j > 0)$ by $\P_j$.  
 
-There is one further important generalization, namely we may see
+We will make one further generalization, namely we may see
 different types of events.  Event types are often called ``marks'' in the literature, and a process with different
 event types is called a ``marked process''. 
 Then our observations are pairs $(t,m)$ meaning that an event of type $m$ has occured at time $t$.  In this
@@ -210,15 +238,19 @@ $j>0$, $\P_j$ has rate
   0\quad\text{for $t \le t_j$}.
 \end{cases}
 \end{equation}
-We define $\lambda_{ij} := \lambda_j(t_i)$ for $0 <j < i$,
-$\lambda_{i0} := \lambda_0$ for all $i$, $t_{ij} := t_i-t_j$ for $i > 0$. 
+We define $\lambda_{ij} := \hat{\lambda_j}(t_j,t_i)$ for $0 <j < i$, the mean rate of process $\P_j$ over
+the interval $[t_j,t_i]$, as given by \eqref{lambda_hat}.\footnote{$\lambda_{ij}$ depends on decay
+parameters $\sigma$ and $\rho$ which we will specify below.}  We further define
+$\lambda_{i0} := \lambda_0$ for all $i$, and we set $t_{ij} := t_i-t_j$ for $i > 0$. 
 
 \subsection{The Model}
-We want to explain an observed arrival stream $\{(t_0,\mu(0),\dots,(t_N,\mu(N)\}$ as the output
-of a Hawkes process.  All arrival times are given as elapsed times from $t_0$, the arrival time of the first
-base process event, so $t_{i0}$ is just $t_i$.
-Thus, if $t_i$ is the arrival time of an event generated by process $\P_j$ for some index $j < i$, and
-$\P_j$ has generated $k_{ij}-1$ previous events prior to time $t_i$, then 
+We want to explain an observed arrival stream $\{(t_1,\mu(1),\dots,(t_N,\mu(N)\}$ as the output
+of a Hawkes process.  All arrival times are given as elapsed times from some reference time $t_0$,
+which we take to be the starting time of the base process.  Thus, $t_1$ is the arrival time of the first
+base process event, and $t_{i0}$ is just $t_i$.
+
+If $t_i$ is the arrival time of an event generated by process $\P_j$ for some index $j < i$, and
+if $\P_j$ has generated $k_{ij}-1$ previous events prior to time $t_i$, then 
 
 \begin{equation}\label{p_ij}
   p_{ij} :=  Pd(T_i = t_i \mid j, k_{ij}) = \frac{\lambda_{ij}^{k_{ij}}t_{ij}^{(k_{ij}-1)}}{(k_{ij}-1)!}e^{-\lambda_{ij}t_{ij}}
@@ -232,16 +264,7 @@ we define a hidden state space $S := \{0,1,2,\dots,N\}$ and assume that $j\in{S}
 This makes $j$ a random variable with a prior distribution and converts \eqref{p_ij} to a mixture distribution, but
 we still don't know the value of $k_{ij}$.  So we
 will replace $k_{ij}$ by its expected value $\k_{ij}$, the expected number of events generated by $\P_j$
-in the interval $(t_j,t_i]$, which is  obtained by integrating the arrival rate $\lambda_j(t)$ from $t_j$ to $t_i$,
-and is easily seen to be given by
-$$
-\k_{ij} =
-\begin{cases}
-  \frac{\sigma_{m}}{\rho_{m}}(1-e^{-\rho_{m}t_{ij}})&\text{for $m = \mu(j)$ and $j > 0$,} \\
-  \lambda_0t_i & \text{for $j = 0$}.
-\end{cases}
-$$
-So \eqref{p_ij} becomes
+in the interval $(t_j,t_i]$, which is  given by \eqref{N_hat}.  Thus, \eqref{p_ij} becomes
 \begin{equation}\label{q_ij}
   q_{ij} := \frac{\lambda_{ij}^{\k_{ij}}t_{ij}^{(\k_{ij}-1)}}{\Gamma(\k_{ij})}
     e^{-\lambda_{ij}t_{ij}}\quad (j < i),
@@ -258,9 +281,7 @@ where
     Pd(T_i = t_i) = \sum_{j=0}^{i-1}\omega_jq_{ij}.
 \end{equation}
 
-At first glance, it appears that we might have a large number of states because the number of states is
-equal to the number of observations,  However, note first that $q_{ij} = 0$ for $j \ge i$, and second that
-$q_{ij}$ decays exponentially in $t_i-t_jq$, so in practice we can ignore states $j << i$.
+At first glance, it appears that we might have a large number of states.  However, note first that $q_{ij} = 0$ for $j \ge i$, and second that $q_{ij}$ decays exponentially in $t_i-t_j$, so in practice we can ignore states $j << i$.
 
 
 \subsection{Optimizing the Parameters}
