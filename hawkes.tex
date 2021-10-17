@@ -173,15 +173,40 @@ is $Pd(T_n = t)$, the probability density that the $n^{th}$ arrival occurs at ti
   \end{proof}
 \end{Thm}
 
-By integrating \eqref{erlang} over the interval $0<t<=T$, we obtain
+Now let $\nu(t)$ be the ``counting function'' which is the total number of arrivals up to time $t$.
 \begin{Cor}
   For a Poisson process of rate $\lambda$ as in the theorem, 
   \begin{equation}\label{poisson}
-  Pr(T_n \le T) = \frac{\lambda^nT^{n}}{n!}e^{-\lambda{T}}.
+  Pr(\nu(t) = n) = \frac{\lambda^nt^{n}}{n!}e^{-\lambda{t}}.
   \end{equation}
-  \qed
+  \begin{proof}
+    For $n = 0$, the event $\nu(t) = 0$ is just the event $T_1 >= t$, hence
+    $$
+    Pr(\nu(t) = 0) = \int_t^{\infty}Pd(T_1 = s)ds = \int_t^{\infty}{\lambda}e^-{\lambda{s}}ds = e^{-\lambda{t}}.
+    $$
+    Now for $n > 0$, we have
+    \begin{align*}
+      Pr(\nu(t) = n) &= \int_0^tPd(T_n = s \& \nu(t-s) = 0)\\
+      &= \int_0^t\frac{\lambda^ns^{n-1}}{(n-1)!}e^{-\lambda{s}}e^{-lambda(t-s)}ds\\
+      &=\frac{\lambda^n}{(n-1)!}e^{-\lambda{t}}\int_0^t s^{n-1}ds\\
+      &= \frac{\lambda^nt^{n}}{n!}e^{-\lambda{t}}.
+    \end{align*}
+  \end{proof}
 \end{Cor}
 
+\begin{Cor}
+  For a Poisson process of rate $\lambda$ as in the theorem, 
+  the expected number of arrivals up to time $t$ is $\lambda{t}$.
+  \begin{proof}
+    \begin{align*}
+      \sum_{n=0}^{\infty}nPr(\nu(t) = n) &= \lambda{t}e^{-\lambda{t}}\sum_{n=1}^{\infty}\frac{(\lambda{t})^{n-1}}{(n-1)!}\\
+      &=\lambda{t}e^{-\lambda{t}}e^{\lambda{t}}\\
+      &= \lambda{t}.
+    \end{align*}
+  \end{proof}
+\end{Cor}
+        
+   
 \section{The Inhomogeneous Poisson Process}
 We next consider a generalization of the Poisson process in which we allow the rate $\lambda$ to vary with time.
 Among the infinitely many ways this might be done, we will consider here only a simple exponential decay model:
@@ -370,7 +395,7 @@ and hence
 We can now solve for $\lambda_{ij}$.  We will enforce a constraint, namely that
 the total number of expected arrivals at time $t_l$ equals the actual number, which is of course $l$:
 $$
-\sum_{m=0}^{l-1}l\k_{lm} = l.
+\sum_{m=0}^{l-1}\k_{lm} = l.
 $$
 Put
 $$
@@ -383,7 +408,7 @@ $$
   0 & \text{if $j \ge i$}.
 \end{cases}
 $$
-So we enforce the constraints $\Sigma_l = 0$ using lagrange multipliers $\eta_l$: 
+So we enforce the constraints $\Sigma_l = 0$  using lagrange multipliers $\eta_l$ for $(1\le l\le N)$:
 \begin{equation}
   \begin{split}
     0 &= \frac{\partial\tilde{Q}}{\partial\k_{ij}} + \sum_{l=1}^N\eta_l\frac{\partial\Sigma_l}{\partial\k_{ij}} \\
@@ -401,8 +426,19 @@ and therefore we get
 \begin{equation}\label{k_hat:1}
   \k_{ij} = i\omega'_{ij}.
 \end{equation}
- 
 
+Recall that $\lambda_0 = \lambda_{i0}$ is a constant, and $\k_{i0} = \lambda'_0t_i$  for all $i$.  Moreover,
+the expected number of arrivals due to $\P_0$ in the interval $[t_{i-1},t_i]$ is
+$$
+\k_{i0} - \k_{i-1,0} = i\lambda'_0 - (i-1)\omega'_{i-1,0}
+$$
+In particular, these inter-arrival times are independent i.i.d. samples from the exponential distribution with
+rate $\lambda_0$, so we set
+\begin{equation}\label{lambda_0}
+  \lambda_0 = \frac{1}{N}\sum_{i=1}^Ni\omega'_{i0} - (i-1)\omega'_{i-1}.
+\end{equation}
+
+To solve for the remaining parameters 
 Now for any mark $m\in M$, let $J(m)$ be the set of indices $j$ such that $\mu(j) = m$:
 $$
 J(m) := \{j\in 0,1,\dots,N \mid \mu(j) = m\}.
@@ -423,6 +459,13 @@ So we first compute, for $j\in J(m)$ and all $i$,
   \end{split}
 \end{equation}
 
+
+
+
+\end{document}
+
+
+
 We then apply \eqref{Q1} for all $i$ and $j>0$ to obtain 
 \begin{equation}\label{dQ_dlambda,k}
    \begin{split}
@@ -440,11 +483,6 @@ Finally, for $x = \sigma_m$ and $x = \rho_m$, we have the chain rule:
 By substituting \eqref{dQ_dlambda,k} and \eqref{d_dsigma,rho} into \eqref{dQ_dsigma,rho},
 we can solve numerically for $\sigma_m$ and $\rho_m$.
 
-
-
- 
-
-\end{document}
 
 
 
