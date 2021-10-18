@@ -138,9 +138,9 @@ maximized is
 where, as above, $\omega'$ denotes the prior value, while $\omega$ and $\eta$ are the unknown parameters
 to be solved for which will maximize $\tilde{Q}$.
 
-\section{Nonlinear Least Squares}
+\section{Nonlinear Least Squares}\label{NLS}
 Here we are given a differentiable function $f(X)$ of a vector variable
-$X = x_1,\dots,x_n$ and a set of observations $\{X_i,y_i \mid 1\le i\le m\}$ where typically $m >> n$
+$X = (x_1,\dots,x_n)$ and a set of observations $\{X_i,y_i \mid 1\le i\le m\}$ where typically $m >> n$
 together with an initial guess $\hat{X}$ for $X$.  We would like to ``solve'' the overdetermined system of
 non-linear equations $y_i = f(X_i)$ by minimizing the sum of squares of the residuals
 $$
@@ -149,16 +149,23 @@ $$
 
 We first compute
 $$
-a_{ij} := \frac{\partial{f}}{\partial{x_j}}(\hat{X}_i),\quad\text{and}\quad b_i := y_i - f(X_i).
+a_{ij} := \frac{\partial{f}}{\partial{x_j}}(\hat{X}_i),\quad\text{and}\quad b_i := y_i - f(\hat{X}_i).
 $$
 We then apply the first-order Taylor expansion of $f$ at $\hat{X}$ to each observation:
 $$
-f(X_i) = f(\hat{X}_i + \sum_{j=1}^na_{ij}(X - \hat{X}_i).
+f(X_i) = f(\hat{X}_i) + \sum_{j=1}^na_{ij}(X - \hat{X}_i).
 $$
-obtaining an overdetermined linear system $A\Delta{X} = b$, 
+obtaining an overdetermined linear system $A(X-\hat{X}) = b$, 
 where
 $$
-A := [a_{ij}], \quad b := [b_i],\quad\text{and}\quad \Delta{X} :=  
+A := [a_{ij}]\quad\text{and}\quad b := [b_i].
+$$
+This system has the solution
+$$
+X = \hat{X} + (A^tA)^{-1}A^tb.
+$$
+
+We can then replace our initial guess $\hat{X}$ by $X$, and iterate this procedure as required.
 
 \section{The Homogeneous Poisson Process}
 For our purposes, a Poisson process of rate $\lambda$ will be defined as an increasing sequence of random variables
@@ -469,7 +476,7 @@ To review, recall from \eqref{lambda_hat}, \eqref{k_hat}, and \eqref{child_rate}
 $\sigma_m$ and $\rho_m$ only through $\lambda_{ij}$ and $\k_{ij}$, namely for $j\in J(m)$ we have:
 \begin{equation}\label{k_ij}
 \k_{ij} = \k(t_j,t_i) = \frac{\sigma_m}{\rho_m}(e^{-\rho_m{t_j}}- e^{-\rho_m{t_i}}).
-\end{align*}
+\end{equation}
 
 Having already solved for $\k_{ij}$, \eqref{k_ij} provides many equations to solve for $\sigma_m$ and $\rho_m$.
 We will use non-linear least squares, as discussed in section \ref{NLS}.
@@ -483,8 +490,9 @@ So we first compute, for $j\in J(m)$ and all $i$,
 \end{equation}
 
 We then evaluate \eqref{k_ij} and \eqref{d_sigma,rho} at the prior parameters $\sigma'_m,~\rho'_m$, to obtain
-overdetermined linear equations in $\Delta\sigma_m$ and $\Delta\rho_m$ which we use to reestimate $\sigma_m$ and
-$\rho_m$.  We can choose to iterate by recomputing partials, or just proceed with another EM iteration.
+overdetermined linear equations in $\Delta\sigma_m$ and $\Delta\rho_m$ as in section \eqref{NLS} which we use
+to reestimate $\sigma_m$ and $\rho_m$.  We can then choose to iterate by recomputing partials, or just proceed
+with another EM iteration.
 
 \section{Numerical Results}
 \end{document}
