@@ -138,21 +138,36 @@ maximized is
 where, as above, $\omega'$ denotes the prior value, while $\omega$ and $\eta$ are the unknown parameters
 to be solved for which will maximize $\tilde{Q}$.
 
+\section{Nonlinear Least Squares}
+Here we are given a differentiable function $f(X)$ of a vector variable
+$X = x_1,\dots,x_n$ and a set of observations $\{X_i,y_i \mid 1\le i\le m\}$ where typically $m >> n$
+together with an initial guess $\hat{X}$ for $X$.  We would like to ``solve'' the overdetermined system of
+non-linear equations $y_i = f(X_i)$ by minimizing the sum of squares of the residuals
+$$
+S := \sum_{i=1}^m (f(X_i)-y_i)^2.
+$$
+
+We first compute
+$$
+a_{ij} := \frac{\partial{f}}{\partial{x_j}}(\hat{X}_i),\quad\text{and}\quad b_i := y_i - f(X_i).
+$$
+We then apply the first-order Taylor expansion of $f$ at $\hat{X}$ to each observation:
+$$
+f(X_i) = f(\hat{X}_i + \sum_{j=1}^na_{ij}(X - \hat{X}_i).
+$$
+obtaining an overdetermined linear system $A\Delta{X} = b$, 
+where
+$$
+A := [a_{ij}], \quad b := [b_i],\quad\text{and}\quad \Delta{X} :=  
 
 \section{The Homogeneous Poisson Process}
 For our purposes, a Poisson process of rate $\lambda$ will be defined as an increasing sequence of random variables
 $ \{0 < T_1 < T_2 < \dots\}$ defined on $(0,\infty)$ such that $\{\tau_i = T_i-T_{i-1}~|~ i = 1,2,\dots\}$ are i.i.d.
 exponential of rate $\lambda$. We often think of $T_i$ as the time of occurence of the $i^{th}$
 event, where often the event is the arrival of something.  So in the following, we will call the $T_i$
-``arrival times'' and the $\tau_i$ ``inter-arrival times''.  The probability density of any finite set of arrival times
-$S_n = \{T_1 = t_1 < T_2 = t_2<\dots<T_n = t_n\}$ is easy to compute. Using independence we see that
-\begin{equation}\label{arr_seq}
-Pd(S_n) = \prod_{i=1}^n\lambda{e}^{-\lambda(t_i - t_{i-1})} = \lambda^ne^{-\lambda\sum_{i = 1}^n(t_i-t_{i-1})} = \lambda^ne^{-\lambda{t_n}}.
-\end{equation}
-In particular, the density of any particular arrival sequence does not depend on the intermediate arrival times
-at all, only on the number of arrivals and the time of the last arrival.
+``arrival times'' and the $\tau_i$ ``inter-arrival times''.  
 
-Now, the actual quantity of interest here
+The quantity of interest here
 is $Pd(T_n = t)$, the probability density that the $n^{th}$ arrival occurs at time $t$.
 \begin{Thm}
   Let $\{0 < T_1<\dots<T_n<... \}$ be a Poisson process of rate $\lambda$.  Then
@@ -172,15 +187,16 @@ is $Pd(T_n = t)$, the probability density that the $n^{th}$ arrival occurs at ti
     \end{align*}
   \end{proof}
 \end{Thm}
+The probability density \eqref{erlang} is known as the gamma density in the literature.
 
-Now let $\nu(t)$ be the ``counting function'' which is the total number of arrivals up to time $t$.
+Now define $\nu(t)$ to be the ``counting function'' which is the total number of arrivals up to time $t$.
 \begin{Cor}
   For a Poisson process of rate $\lambda$ as in the theorem, 
   \begin{equation}\label{poisson}
   Pr(\nu(t) = n) = \frac{\lambda^nt^{n}}{n!}e^{-\lambda{t}}.
   \end{equation}
   \begin{proof}
-    For $n = 0$, the event $\nu(t) = 0$ is just the event $T_1 >= t$, hence
+    For $n = 0$, the event $\nu(t) = 0$ is just the event $T_1 > t$, hence
     $$
     Pr(\nu(t) = 0) = \int_t^{\infty}Pd(T_1 = s)ds = \int_t^{\infty}{\lambda}e^-{\lambda{s}}ds = e^{-\lambda{t}}.
     $$
@@ -193,6 +209,7 @@ Now let $\nu(t)$ be the ``counting function'' which is the total number of arriv
     \end{align*}
   \end{proof}
 \end{Cor}
+The probability distribution \eqref{poisson} is known in the literature as the poisson distribution.
 
 \begin{Cor}
   For a Poisson process of rate $\lambda$ as in the theorem, 
@@ -213,17 +230,15 @@ Among the infinitely many ways this might be done, we will consider here only a 
 \begin{equation}\label{exp_rate}
   \lambda(t) := {\sigma}e^{-\rho{t}}
 \end{equation}
-where $\sigma$ and $\rho$ are known non-negative decay parameters.
+where $\sigma$ and $\rho$ are non-negative decay parameters.
 Then the expected number of arrivals in the interval $[t_0,t_1]$ is
-\begin{equation}\label{n_hat}
-  \hat{n}(t_0,t_1) := \int_{t_0}^{t_1}\lambda(t)dt = \frac{\sigma}{\rho}(e^{-\rho{t_0}}- e^{-\rho{t_1}}),
+\begin{equation}\label{k_hat}
+  \hat{k}(t_0,t_1) := \int_{t_0}^{t_1}\lambda(t)dt = \frac{\sigma}{\rho}(e^{-\rho{t_0}}- e^{-\rho{t_1}}),
 \end{equation}
 and the mean rate in that interval is
 \begin{equation}\label{lambda_hat}
   \hat{\lambda}(t_0,t_1) := \frac{\hat{n}(t_0,t_1)}{t_1 - t_0}.
 \end{equation}
-Note that the in special case $\rho = 0$, which is just the homogeneous case with rate $\sigma$,
-$\hat{m}(t_0,t_1) = \sigma(t_1-t_0)$ and $\hat{\lambda}(t_0,t_1) = \sigma$.
 
 In the sequel, we will approximate an inhomogenous Poisson process with exponentially decaying rate $\lambda(t)$
 in an interval $[t_0,t_1]$ by the homogeneous Poisson process with rate $\hat{\lambda}(t_0,t_1)$.  In particular,
@@ -263,11 +278,19 @@ $j>0$, $\P_j$ has rate
   0\quad\text{for $t \le t_j$}.
 \end{cases}
 \end{equation}
-We define $\lambda_{ij} := \hat{\lambda_j}(t_j,t_i)$ for $0 <j < i$, the mean rate of process $\P_j$ over
-the interval $[t_j,t_i]$, as given by \eqref{lambda_hat}.\footnote{$\lambda_{ij}$ depends on decay
-parameters $\sigma$ and $\rho$ which we will specify below.}  We further define
-$\lambda_{i0} := \lambda_0$ for all $i$, and we set $t_{ij} := t_i-t_j$ for $i > 0$. 
+For $0 < j < i$, We define
+\begin{align*}
+  t_{ij} :&= t_i-t_j,\\
+  \lambda_{ij} :&= \hat{\lambda}_j(t_j,t_i),\quad\text{and}\\
+  \k_{ij} :&= \frac{\lambda_{ij}}{t_{ij}}.
+\end{align*}
 
+So $\lambda_{ij}$ is the mean rate of process $\P_j$ over
+the interval $[t_j,t_i]$, as given by \eqref{lambda_hat}.\footnote{$\lambda_{ij}$ depends on decay
+  parameters $\sigma$ and $\rho$ which we will specify below.} and $\k_{ij}$ is the expected number
+of arrivals from $\P_j$ up to time $t_i$.  In particular, we have
+  $\lambda_{i0} := \lambda_0$ for all $i$ because the base process is homogeneous.
+  
 \subsection{The Model}
 We want to explain an observed arrival stream $\{(t_1,\mu(1),\dots,(t_N,\mu(N)\}$ as the output
 of a Hawkes process.  All arrival times are given as elapsed times from some reference time $t_0$,
@@ -289,7 +312,7 @@ we define a hidden state space $S := \{0,1,2,\dots,N\}$ and assume that $j\in{S}
 This makes $j$ a random variable with a prior distribution and converts \eqref{p_ij} to a mixture distribution, but
 we still don't know the value of $k_{ij}$.  So we
 will replace $k_{ij}$ by its expected value $\k_{ij}$, the expected number of events generated by $\P_j$
-in the interval $(t_j,t_i]$, which is  given by \eqref{n_hat}, which also shows that $\lambda_{ij} = \k_{ij}t_{ij}^{-1}$
+in the interval $(t_j,t_i]$, which is  given by \eqref{k_hat}, which also shows that $\lambda_{ij} = \k_{ij}t_{ij}^{-1}$
 Thus, making all these substitutions into \eqref{p_ij} we get
 \begin{equation}\label{q_ij}
   \begin{split}
@@ -387,13 +410,13 @@ Substituting this approximation into \eqref{Q1} yields
   \end{split}
 \end{equation}
 and hence
-\begin{equation}
+\begin{equation}\label{dQ_dk}
   \frac{\partial\tilde{Q}}{\partial\k_{ij}} = \frac{\omega'_{ij}}{2\k_{ij}}.
 \end{equation}
 
 
-We can now solve for $\lambda_{ij}$.  We will enforce a constraint, namely that
-the total number of expected arrivals at time $t_l$ equals the actual number, which is of course $l$:
+We can now solve for $\k_{ij}$.  We will enforce a constraint, namely that
+the total number of expected arrivals at time $t_l$ equals the actual number, which is just $l$:
 $$
 \sum_{m=0}^{l-1}\k_{lm} = l.
 $$
@@ -408,7 +431,7 @@ $$
   0 & \text{if $j \ge i$}.
 \end{cases}
 $$
-So we enforce the constraints $\Sigma_l = 0$  using lagrange multipliers $\eta_l$ for $(1\le l\le N)$:
+Once again, we enforce the constraints $\Sigma_l = 0$  using lagrange multipliers $\eta_l$ for $(1\le l\le N)$:
 \begin{equation}
   \begin{split}
     0 &= \frac{\partial\tilde{Q}}{\partial\k_{ij}} + \sum_{l=1}^N\eta_l\frac{\partial\Sigma_l}{\partial\k_{ij}} \\
@@ -422,49 +445,58 @@ However, by definition (see \eqref{omega'_ij}) we have
 $$
 \sum_{j=0}^{i-1}\omega'_{ij} = 1\quad\text{for all $i,j$},
 $$
-and therefore we get
+so therefore we get
 \begin{equation}\label{k_hat:1}
   \k_{ij} = i\omega'_{ij}.
 \end{equation}
 
-Recall that $\lambda_0 = \lambda_{i0}$ is a constant, and $\k_{i0} = \lambda'_0t_i$  for all $i$.  Moreover,
-the expected number of arrivals due to $\P_0$ in the interval $[t_{i-1},t_i]$ is
-$$
-\k_{i0} - \k_{i-1,0} = i\lambda'_0 - (i-1)\omega'_{i-1,0}
-$$
-In particular, these inter-arrival times are independent i.i.d. samples from the exponential distribution with
-rate $\lambda_0$, so we set
+In particular, we can solve for $\lambda_0$ since $\k_{i0} = \lambda_0t_i$, and from \eqref{k_hat:1}
+we get
 \begin{equation}\label{lambda_0}
-  \lambda_0 = \frac{1}{N}\sum_{i=1}^Ni\omega'_{i0} - (i-1)\omega'_{i-1}.
+  \begin{split}
+\lambda_0 &= \omega'_{i0}\frac{i}{t_i} \quad\text{for all $i$, and summing over $i$ we have}\\
+\lambda_0 &= \frac{1}{N}\sum_{i=1}^N\omega'_{i0}\frac{i}{t_i}.
+  \end{split}
 \end{equation}
 
-To solve for the remaining parameters 
-Now for any mark $m\in M$, let $J(m)$ be the set of indices $j$ such that $\mu(j) = m$:
+To solve for the remaining decay parameters $\sigma_m$ and $\rho_m$, 
+we let $J(m)$ be the set of indices $j$ such that $\mu(j) = m$:
 $$
 J(m) := \{j\in 0,1,\dots,N \mid \mu(j) = m\}.
 $$
 
-To review, recall from \eqref{lambda_hat}, \eqref{n_hat}, and \eqref{child_rate} that $\tilde{Q}$ depends on
+To review, recall from \eqref{lambda_hat}, \eqref{k_hat}, and \eqref{child_rate} that $\tilde{Q}$ depends on
 $\sigma_m$ and $\rho_m$ only through $\lambda_{ij}$ and $\k_{ij}$, namely for $j\in J(m)$ we have:
-\begin{align*}
-\k_{ij} &= \k(t_j,t_i) = \frac{\sigma_m}{\rho_m}(e^{-\rho_m{t_j}}- e^{-\rho_m{t_i}}),\quad\text{and}\\
-\lambda_{ij} &= \k_{ij}t_{ij}^{-1}.
+\begin{equation}\label{k_ij}
+\k_{ij} = \k(t_j,t_i) = \frac{\sigma_m}{\rho_m}(e^{-\rho_m{t_j}}- e^{-\rho_m{t_i}}).
 \end{align*}
 
+Having already solved for $\k_{ij}$, \eqref{k_ij} provides many equations to solve for $\sigma_m$ and $\rho_m$.
+We will use non-linear least squares, as discussed in section \ref{NLS}.
+
 So we first compute, for $j\in J(m)$ and all $i$,
-\begin{equation}\label{d_dsigma,rho}
+\begin{equation}\label{d_sigma,rho}
   \begin{split}
-    \frac{\partial\k_{ij}}{\partial\sigma_m} &= \frac{1}{\rho_m}(e^{-\rho_m{t_j}}- e^{-\rho_m{t_i}}),\\
-    \frac{\partial\k_{ij}}{\partial\rho_m} &= \left(t_i-t_j)-\frac{\sigma_m}{\rho_m^2}\right)(e^{-\rho_m{t_j}}- e^{-\rho_m{t_i}}).
+    \frac{\partial\k_{ij}}{\partial\sigma_m} &= \frac{1}{\rho_m}(e^{-\rho_m{t_j}}- e^{-\rho_m{t_i}}) = \frac{\k_{ij}}{\sigma},\\
+ \frac{\partial\k_{ij}}{\partial\rho_m} &= -\frac{1}{\rho_m}\k_{ij}+\frac{\sigma_m}{\rho_m}(t_ie^{-\rho_mt_i}-t_je^{-\rho_mt_j}).
   \end{split}
 \end{equation}
 
+We then evaluate \eqref{k_ij} and \eqref{d_sigma,rho} at the prior parameters $\sigma'_m,~\rho'_m$, to obtain
+overdetermined linear equations in $\Delta\sigma_m$ and $\Delta\rho_m$ which we use to reestimate $\sigma_m$ and
+$\rho_m$.  We can choose to iterate by recomputing partials, or just proceed with another EM iteration.
 
-
-
+\section{Numerical Results}
 \end{document}
 
 
+The probability density of any finite set of arrival times
+$S_n = \{T_1 = t_1 < T_2 = t_2<\dots<T_n = t_n\}$ is easy to compute. Using independence we see that
+\begin{equation}\label{arr_seq}
+Pd(S_n) = \prod_{i=1}^n\lambda{e}^{-\lambda(t_i - t_{i-1})} = \lambda^ne^{-\lambda\sum_{i = 1}^n(t_i-t_{i-1})} = \lambda^ne^{-\lambda{t_n}}.
+\end{equation}
+In particular, the density of any particular arrival sequence does not depend on the intermediate arrival times
+at all, only on the number of arrivals and the time of the last arrival.
 
 We then apply \eqref{Q1} for all $i$ and $j>0$ to obtain 
 \begin{equation}\label{dQ_dlambda,k}
