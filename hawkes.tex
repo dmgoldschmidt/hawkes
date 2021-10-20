@@ -139,43 +139,55 @@ where, as above, $\omega'$ denotes the prior value, while $\omega$ and $\eta$ ar
 to be solved for which will maximize $\tilde{Q}$.
 
 \section{Nonlinear Least Squares}\label{NLS}
-Here we are given a differentiable function $f(X)$ of a vector variable
-$X = (x_1,\dots,x_n)$ and a set of observations $\{X_i,y_i \mid 1\le i\le m\}$ where typically $m >> n$
-together with an initial guess $\hat{X}$ for $X$.  We would like to ``solve'' the overdetermined system of
-non-linear equations $y_i = f(X_i)$ by minimizing the sum of squares of the residuals
+Here we are given $m$ non-linear equations $\{f_i(X) = y_i\}$ in $n$ unknowns $X = (x_1,\dots,x_n)$,
+together with an initial guess $\hat{X}$ for $X$.  We assume that the functions $f_(X)$ are differentiable
+and that $m \ge n$. Typically, we in fact have $m >> n$.  We would like to ``solve'' the system by minimizing
+the sum of squares of the residuals
 $$
-S := \sum_{i=1}^m (f(X_i)-y_i)^2.
+S := \sum_{i=1}^m (f_i(X)-y_i)^2.
 $$
+This can be achieved using any one of a number of gradient descent methods, but we will outline here a
+simple approach which generalizes Newton's method.
 
 We first compute
 $$
-a_{ij} := \frac{\partial{f}}{\partial{x_j}}(\hat{X}_i),\quad\text{and}\quad b_i := y_i - f(\hat{X}_i).
+a_{ij} := \frac{\partial{f_i}}{\partial{x_j}}(\hat{X}),\quad\text{and}\quad b_i := y_i - f_i(\hat{X}).
 $$
-We then apply the first-order Taylor expansion of $f$ at $\hat{X}$ to each observation:
-$$
-f(X_i) = f(\hat{X}_i) + \sum_{j=1}^na_{ij}(X - \hat{X}_i).
-$$
+We then apply the first-order Taylor approximation of $f_i$ about  $X = \hat{X}$  
+\begin{equation} \label{Taylor}
+f_i(X) \approx f_i(\hat{X}) + \sum_{j=1}^na_{ij}(X - \hat{X}).
+\end{equation}
 obtaining an overdetermined linear system $A(X-\hat{X}) = b$, 
 where
 $$
 A := [a_{ij}]\quad\text{and}\quad b := [b_i].
 $$
-This system has the solution
+This system has the least-squares solution
 $$
 X = \hat{X} + (A^tA)^{-1}A^tb.
 $$
 
 We can then replace our initial guess $\hat{X}$ by $X$, and iterate this procedure as required.
+Note that when $m = n$ there is no need to use least squares and the algorithm reduces to Newton's method.
+
+The success of this algorithm depends on two things:
+\begin{enumerate}
+\item The non-singularity of the normal matrix $A^tA$,
+\item The strength of the approximation \eqref{Taylor}.
+\end{enumerate}
+If the normal matrix is (near) singular, we can set one or more variables to zero and solve for the remaining
+variables.  In the second case, we observe that the algorithm does not converge.  This is usually because the
+correction $\Delta{X} = X-\hat{X}$ is too large. A possible solution is to scale $\Delta{X}$ by a fraction
+$\lambda < 1$.  
 
 \section{The Homogeneous Poisson Process}
-For our purposes, a Poisson process of rate $\lambda$ will be defined as an increasing sequence of random variables
+For our purposes, a poisson process of rate $\lambda$ will be defined as an increasing sequence of random variables
 $ \{0 < T_1 < T_2 < \dots\}$ defined on $(0,\infty)$ such that $\{\tau_i = T_i-T_{i-1}~|~ i = 1,2,\dots\}$ are i.i.d.
 exponential of rate $\lambda$. We often think of $T_i$ as the time of occurence of the $i^{th}$
 event, where often the event is the arrival of something.  So in the following, we will call the $T_i$
 ``arrival times'' and the $\tau_i$ ``inter-arrival times''.  
 
-The quantity of interest here
-is $Pd(T_n = t)$, the probability density that the $n^{th}$ arrival occurs at time $t$.
+The quantity of interest here is $Pd(T_n = t)$, the probability density that the $n^{th}$ arrival occurs at time $t$.
 \begin{Thm}
   Let $\{0 < T_1<\dots<T_n<... \}$ be a Poisson process of rate $\lambda$.  Then
   \begin{equation}\label{erlang}
@@ -196,21 +208,21 @@ is $Pd(T_n = t)$, the probability density that the $n^{th}$ arrival occurs at ti
 \end{Thm}
 The probability density \eqref{erlang} is known as the gamma density in the literature.
 
-Now define $\nu(t)$ to be the ``counting function'' which is the total number of arrivals up to time $t$.
+Now define $\eta(t)$ to be the ``counting function'' which is the total number of arrivals up to time $t$.
 \begin{Cor}
   For a Poisson process of rate $\lambda$ as in the theorem, 
   \begin{equation}\label{poisson}
-  Pr(\nu(t) = n) = \frac{\lambda^nt^{n}}{n!}e^{-\lambda{t}}.
+  Pr(\eta(t) = n) = \frac{\lambda^nt^{n}}{n!}e^{-\lambda{t}}.
   \end{equation}
   \begin{proof}
-    For $n = 0$, the event $\nu(t) = 0$ is just the event $T_1 > t$, hence
+    For $n = 0$, the event $\eta(t) = 0$ is just the event $T_1 > t$, hence
     $$
-    Pr(\nu(t) = 0) = \int_t^{\infty}Pd(T_1 = s)ds = \int_t^{\infty}{\lambda}e^-{\lambda{s}}ds = e^{-\lambda{t}}.
+    Pr(\eta(t) = 0) = \int_t^{\infty}Pd(T_1 = s)ds = \int_t^{\infty}{\lambda}e^-{\lambda{s}}ds = e^{-\lambda{t}}.
     $$
     Now for $n > 0$, we have
     \begin{align*}
-      Pr(\nu(t) = n) &= \int_0^tPd(T_n = s \& \nu(t-s) = 0)\\
-      &= \int_0^t\frac{\lambda^ns^{n-1}}{(n-1)!}e^{-\lambda{s}}e^{-lambda(t-s)}ds\\
+      Pr(\eta(t) = n) &= \int_0^tPd(T_n = s \& \eta(t-s) = 0)ds\
+      &= \int_0^t\frac{\lambda^ns^{n-1}}{(n-1)!}e^{-\lambda{s}}e^{-\lambda(t-s)}ds\\
       &=\frac{\lambda^n}{(n-1)!}e^{-\lambda{t}}\int_0^t s^{n-1}ds\\
       &= \frac{\lambda^nt^{n}}{n!}e^{-\lambda{t}}.
     \end{align*}
@@ -223,7 +235,7 @@ The probability distribution \eqref{poisson} is known in the literature as the p
   the expected number of arrivals up to time $t$ is $\lambda{t}$.
   \begin{proof}
     \begin{align*}
-      \sum_{n=0}^{\infty}nPr(\nu(t) = n) &= \lambda{t}e^{-\lambda{t}}\sum_{n=1}^{\infty}\frac{(\lambda{t})^{n-1}}{(n-1)!}\\
+      \sum_{n=0}^{\infty}nPr(\eta(t) = n) &= \lambda{t}e^{-\lambda{t}}\sum_{n=1}^{\infty}\frac{(\lambda{t})^{n-1}}{(n-1)!}\\
       &=\lambda{t}e^{-\lambda{t}}e^{\lambda{t}}\\
       &= \lambda{t}.
     \end{align*}
@@ -299,7 +311,7 @@ of arrivals from $\P_j$ up to time $t_i$.  In particular, we have
   $\lambda_{i0} := \lambda_0$ for all $i$ because the base process is homogeneous.
   
 \subsection{The Model}
-We want to explain an observed arrival stream $\{(t_1,\mu(1),\dots,(t_N,\mu(N)\}$ as the output
+We want to explain an observed arrival stream $\{(t_1,\mu(1)),\dots,(t_N,\mu(N))\}$ as the output
 of a Hawkes process.  All arrival times are given as elapsed times from some reference time $t_0$,
 which we take to be the starting time of the base process.  Thus, $t_1$ is the arrival time of the first
 base process event, and $t_{i0}$ is just $t_i$.
@@ -371,24 +383,24 @@ mind the constraint
 $$
 \sum_{j=0}^N\omega_j = 1,
 $$
-which we will enforce using a Lagrange multiplier $\eta$ as follows:
+which we will enforce using a Lagrange multiplier $\nu$ as follows:
 
 \begin{align*}
-  0 &= \frac{\partial}{\partial\omega_j}\left(\tilde{Q} + \eta(1-\sum_{j=0}^N\omega_j )\right) \\
-  &= \frac{1}\omega_j\sum_{i=1}^N\omega_{ij}' - \eta.
+  0 &= \frac{\partial}{\partial\omega_j}\left(\tilde{Q} + \nu(1-\sum_{j=0}^N\omega_j )\right) \\
+  &= \frac{1}\omega_j\sum_{i=1}^N\omega_{ij}' - \nu.
 \end{align*}
 We conclude that
 \begin{equation}\label{omega_j:0}
   \begin{split}
-  \eta\omega_j &= \sum_{i=1}^N\omega_{ij}',\quad\text{whence} \\
-  \eta\sum_{j=0}^N\omega_j &= \sum_{i=1}^N\sum_{j=0}^N\omega'_{ij}.
+  \nu\omega_j &= \sum_{i=1}^N\omega_{ij}',\quad\text{whence} \\
+  \nu\sum_{j=0}^N\omega_j &= \sum_{i=1}^N\sum_{j=0}^N\omega'_{ij}.
   \end{split}
 \end{equation}
 Since
 $$
 \sum_{j=0}^N \omega_j = 1 = \sum_{j=0}^N\omega'_{ij},
 $$
-it follows that $\eta = N$ and thus \eqref{omega_j:0} yields
+it follows that $\nu = N$ and thus \eqref{omega_j:0} yields
 \begin{equation}\label{omega_j}
   \omega_j = \frac{1}{N}\sum_{i=1}^N\omega'_{ij}.
 \end{equation}
@@ -438,14 +450,15 @@ $$
   0 & \text{if $j \ge i$}.
 \end{cases}
 $$
-Once again, we enforce the constraints $\Sigma_l = 0$  using lagrange multipliers $\eta_l$ for $(1\le l\le N)$:
+Once again, we enforce the constraints $\Sigma_l = 0$  using lagrange multipliers $\nu_l$ for $(1\le l\le N)$.
+Then for $ j < i$, we have
 \begin{equation}
   \begin{split}
-    0 &= \frac{\partial\tilde{Q}}{\partial\k_{ij}} + \sum_{l=1}^N\eta_l\frac{\partial\Sigma_l}{\partial\k_{ij}} \\
-    &= \frac{\omega'_{ij}}{2\k_{ij}} - \eta_i,\quad\text{whence}\\
-    2\k_{ij}  &= \omega'_{ij}\eta_i^{-1},\\
-    2\sum_{j=0}^{i-1}\k_{ij} &= \eta_i^{-1}\sum_{j=0}^{i-1}\omega'_{ij},\\
-    \eta_i &= \frac{1}{2i}\sum_{j=0}^{i-1}\omega'_{ij},\\
+    0 &= \frac{\partial\tilde{Q}}{\partial\k_{ij}} + \sum_{l=1}^N\nu_l\frac{\partial\Sigma_l}{\partial\k_{ij}} \\
+    &= \frac{\omega'_{ij}}{2\k_{ij}} - \nu_i,\quad\text{whence}\\
+    2\k_{ij}  &= \omega'_{ij}\nu_i^{-1},\\
+    2\sum_{j=0}^{i-1}\k_{ij} &= \nu_i^{-1}\sum_{j=0}^{i-1}\omega'_{ij},\\
+    \nu_i &= \frac{1}{2i}\sum_{j=0}^{i-1}\omega'_{ij},\\
   \end{split}
 \end{equation}
 However, by definition (see \eqref{omega'_ij}) we have
@@ -490,11 +503,11 @@ So we first compute, for $j\in J(m)$ and all $i$,
 \end{equation}
 
 We then evaluate \eqref{k_ij} and \eqref{d_sigma,rho} at the prior parameters $\sigma'_m,~\rho'_m$, to obtain
-overdetermined linear equations in $\Delta\sigma_m$ and $\Delta\rho_m$ as in section \eqref{NLS} which we use
+overdetermined linear equations in $\Delta\sigma_m$ and $\Delta\rho_m$ as in section \ref{NLS} which we use
 to reestimate $\sigma_m$ and $\rho_m$.  We can then choose to iterate by recomputing partials, or just proceed
 with another EM iteration.
 
-\section{Numerical Results}
+%\section{Numerical Results}
 \end{document}
 
 
