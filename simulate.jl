@@ -53,36 +53,46 @@ function main(cmd_line = ARGS)
   data = HawkesPoint[]
   processes = Process[]
   next_process::Int64 = 0 #indexes the processes array
-  next_parent::Int64 = 1 #indexes the data array
+  next_parent::Int64 = 0 #indexes the data array
   rng = MersenneTwister(seed)
   t = 0
   i = 0
   lambda_0 = k_hat_base/total_time;
-  while next_parent < length(data)
-    parent_point = data[next_parent]
-    parent_process = processes[parent_point.process]
-    if has_children(parent_process)
-      next_parent += 1
-      continue
+  
+  parent_process = Process(-1,-1,[],0) # dummy parent data for base process
+  parent_point = HawkesPoint(-1,0)
+  rho = 0
+  sigma = k_hat_base/total_time
+  
+  while next_parent <= length(data)
+    if(next_parent > 0)
+      parent_point = data[next_parent]
+      parent_process = processes[parent_point.process]
+      if has_children(parent_process)
+        next_parent += 1
+        continue
+        rho = log(2)/child_half_life # decay rate of child lambda
+        sigma = rho*k_hat_child/(1 - exp(-rho*(total_time - parent_point.time)))
+      end
     end
+    println("parent process: $parent_process")
     # OK, we have a new parent. Set up the child process
     this_process = Process(next_parent,parent_process.generation+1,[],parent_point.time)
     push!(processes,this_process) # save the new process
     push!(parent_process.children,length(processes)) # add the index of the child process to the parent process  
-    
+
+    println("this process: $this_process")
     while true # generate the next point
       lambda = 2^(-this_process.generation)*sigma*exp(-rho*(t - this_process.start_time))
       t0 -= log(1-rand(rng))/lambda;
       if t0 > total_time;break;end
       t = t0
       push!(data,HawkesPoint(this_process,t))
-      println("$t")
+      println(data[length(data)])
     end # while true
-    println("\ndata for process $this_process")
-    for d in data
-      println(d)
-    end # for
-  end #while next_parent < length(data)
+    next_parent += 1
+  end # while(next_parent <= length(data)
+end #main
 
 
 # execution begins here
