@@ -1,3 +1,7 @@
+Things to check with default parameters:
+1.  the generation is 1-up, probably wrong
+2.  the parent field should be an index into processes, not into data
+
 #!/home/david/julia-1.6.1/bin/julia
 #import GZip
 if !@isdefined(CommandLine_loaded)
@@ -9,6 +13,9 @@ end
 if !@isdefined(util_loaded)
   include("util.jl")
 end
+if !@isdefined(sort_loaded)
+  include("sort.jl")
+end
 
 using Printf
 using DelimitedFiles
@@ -19,7 +26,12 @@ mutable struct HawkesPoint
   time::Float64
 end
 
+function Base.:<(x::HawkesPoint,y::HawkesPoint)
+  return x.time < y.time
+end
+
 mutable struct Process
+  index::Int64
   parent::Int64
   generation::Int64
   has_children::Bool
@@ -54,14 +66,14 @@ function main(cmd_line = ARGS)
   i = 0
   lambda_0 = k_hat_base/total_time;
   
-  parent_process = Process(-1,-1,false,0) # dummy parent data for base process
+  parent_process = Process(-1,-1,-1,false,0) # dummy parent data for base process
   parent_point = HawkesPoint(-1,0)
   rho = 0
   sigma = k_hat_base/total_time
   println("dummy parent for base process: $parent_process")
   while next_parent <= length(data)
-    # global parent_process, parent_point, rho, sigma
     if(next_parent > 0)
+      println("next_parent: data[$(next_parent)] = $(data[next_parent])") 
       parent_point = data[next_parent]
       parent_process = processes[parent_point.process]
       if parent_process.has_children
@@ -73,23 +85,31 @@ function main(cmd_line = ARGS)
     end
     println("parent process: $parent_process")
      # OK, we have a new parent. Set up the child process
-    this_process = Process(next_parent,parent_process.generation+1,false,parent_point.time)
+    this_process = Process(length(processes)+1,next_parent,parent_process.generation+1,false,parent_point.time)
     push!(processes,this_process) # save the new process
-    this_process_index = length(processes)
-    println(fieldnames(Process))
+#    println(fieldnames(Process))
     parent_process.has_children = true
-    println("this process: $this_process")
+ #   println("this process: $this_process")
     t0 = this_process.start_time
     t = t0
     while true # generate the next point
       lambda = sigma*exp(-rho*(t - t0))/(2^(this_process.generation))
       t -= log(1-rand(rng))/lambda;
       if t > total_time;break;end
-      push!(data,HawkesPoint(this_process_index,t))
-      println(data[length(data)])
+      push!(data,HawkesPoint(this_process.index,t))
+#      println(data[length(data)])
     end # while true
     next_parent += 1
   end # while(next_parent <= length(data)
+  heapsort(data)
+  for point in data
+    println("process: $(point.process) time: $(point.time)")
+  end
+  println("processes:\n")
+  for p in processes
+    println("$(p.index): parent: $(p.parent) generation: $(p.generation) has_children? $(p.has_children) start_time: 
+$(p.start_time)")
+    end
 end #main
 
 
