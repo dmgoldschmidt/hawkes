@@ -1,8 +1,4 @@
 #!/home/david/julia-1.6.1/bin/julia
-# Things to check with default parameters:
-# 1.  the generation is 1-up, probably wrong
-# 2.  the parent field should be an index into processes, not into data
-
 #import GZip
 if !@isdefined(CommandLine_loaded)
   include("CommandLine.jl")
@@ -34,7 +30,6 @@ mutable struct Process
   process_no::Int64
   parent::Int64
   generation::Int64
-#  has_children::Bool
   start_time::Float64
 end
 
@@ -73,7 +68,6 @@ function main(cmd_line = ARGS)
   
   while next_index <= length(data)
     if(next_index > 0) # skip the startup for the base process
- #     println("next point: data[$(next_index)] = $(data[next_index])") 
       data_point = data[next_index]
       parent_process = processes[data_point.process]
       rho = log(2)/child_half_life # decay rate of child lambda
@@ -94,10 +88,14 @@ function main(cmd_line = ARGS)
     next_index += 1
   end # while(next_index <= length(data)
   heapsort(data)
-  println("data:\n")
-  for point in data
-    println("process: $(point.process) time: $(point.time)")
+  #  println(out_file,"data:\n")
+  open(out_file, "w") do io
+    for p in data
+      write(io, "$(p.process)  $(p.time)\n")
+    end
   end
+  
+
   println("processes:\n")
   for p in processes
     println("$(p.process_no): parent: $(p.parent) generation: $(p.generation)  start_time: $(p.start_time)")
