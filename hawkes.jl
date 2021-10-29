@@ -14,12 +14,19 @@ using Printf
 using DelimitedFiles
 using Random
 
+mutable struct Parameters
+  lambda::Float64
+  omega::Array{Float64}
+  rho::Array{Float64}
+  sigma::Array{Float64}
+end
+
 mutable struct HawkesPoint
   mark::String # the no. of the process that generated this point
   time::Float64
 end
 function Base.println(p::HawkesPoint)
-  println("mark: $(p.process) time: $(p.time)")
+  println("mark: $(p.mark) time: $(p.time)")
 end
 
 function Base.:<(x::HawkesPoint,y::HawkesPoint)
@@ -39,10 +46,9 @@ function main(cmd_line = ARGS)
      "in_file" => "hawkes_test_data.txt",
     "ndata" => 0,
     "out_file"=>"",
-    "total_time" => 10,
-    "lambda_0" => 1, # base process rate
-    "sigma_0" => 2, # initial child process rate (see below)
-    "child_half_life" => .1, #half-life of child processes 
+    "rho_0" => 1, 
+    "sigma_0" => 2, # initial child process rate
+    "lambda_0" => 1,
   )
   cl = get_vals(defaults,cmd_line) # replace defaults with command line values if they are specified
   println("parameters: $defaults")
@@ -50,40 +56,75 @@ function main(cmd_line = ARGS)
   in_file = defaults["in_file"]
   ndata = defaults["ndata"]
   out_file = defaults["out_file"]
-  total_time = defaults["total_time"]
-  lambda_0 = defaults["lambda_0"]
+  rho_0 = defaults["rho_0"]
   sigma_0 = defaults["sigma_0"]
-  child_half_life = defaults["child_half_life"]
+  lambda_0 = defaults["lambda_0"]
   
   stream = tryopen(in_file) # this is from util.jl
   all_lines = readlines(stream)
   if(ndata == 0)
     ndata = length(all_lines)
   end
-  decay_params = Dict{String,Vector{Float64}()
+  decay_params = Dict{String,Vector{Float64}}()
   nmarks = 0
   data = HawkesPoint[]
   println("$ndata data points:\n") 
   for i in 1:ndata
     field = map(string,split(all_lines[i])) # split the ith line
-#    println("field: ",field)
     if !haskey(decay_params,field[1])
       nmarks += 1
-      marks[field[1]] = [sigma_0,rho_0]
+      decay_params[field[1]] = [sigma_0,rho_0]
     end
     push!(data, HawkesPoint(field[1],myparse(Float64,field[2])))
     println(data[i])
   end
-  println("\n$nmarks marks:\n",marks)
+  println("\n$nmarks decay_params:\n",decay_params)
 
   omega = Vector{Float64}(undef,ndata)
   sigma = Vector{Float64}(undef,nmarks)
   rho = Vector{Float64}(undef,nmarks)
+  lambda = lambda_0
+  
   omega1 = Matrix{Float64}(undef,ndata,ndata) 
   for i in 1:nmarks
     sigma[i] = sigma_0
     rho[i] = rho_0
+  end
+  rng = MersenneTwister(seed)
+  sum = 0
+  for i in 1:ndata
+    omega[i] = rand(rng)
+    sum += omega[i]
+  end
+  for i in 1:ndata
+    omega[i] /= sum
+  end
+  println("omega: $omega")
 
+  #OK, here we go
+  p0 = Parameters(lambda,omega,rho,sigma)
+  for i in 1:ndata
+    t_i = data[i].time
+    sum = 0
+    for j in 1:i-1
+      sigma = decay_params[data[j].mark][1]
+      rho = decay_params[data[j].mark][2]
+      if j == 1
+        t_j = 0
+        k_hat_ij = lambda*t_i
+      else
+        t_j = (j == 1 ? 0 : data[j].time)
+        k_hat_ij = p0.sigma*(exp(-p0.rho*t_j) - exp(-p0.rho*t_i))/p0.rho
+      end
+      omega1[i,j] = p0.omega[j]*sqrt(k_hat_ij)/(t_i-t_j)
+      sum += omega1[i,j]
+    end
+    for j in 1:i-1
+      omega1[i,j] /= sum
+    end
+    # OK, we have the posterior state probabilities w.r.t. the prior parameters (p0)
+  end
+  
 end #main
 
 
