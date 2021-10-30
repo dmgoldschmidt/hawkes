@@ -34,12 +34,12 @@ function Base.:<(x::HawkesPoint,y::HawkesPoint)
   return x.time < y.time
 end
 
-mutable struct Process
-  process_no::Int64
-  parent::Int64
-  generation::Int64
-  start_time::Float64
-end
+# mutable struct Process
+#   process_no::Int64
+#   parent::Int64
+#   generation::Int64
+#   start_time::Float64
+# end
 
 function main(cmd_line = ARGS)    
   defaults = Dict{String,Any}(
@@ -49,7 +49,7 @@ function main(cmd_line = ARGS)
     "out_file"=>"",
     "rho_0" => 1, 
     "sigma_0" => 2, # initial child process rate
-    "lambda_0" => 1,
+    "lambda_0" => .1,
   )
   cl = get_vals(defaults,cmd_line) # replace defaults with command line values if they are specified
   println("parameters: $defaults")
@@ -70,6 +70,7 @@ function main(cmd_line = ARGS)
   end
   nmarks = 0
   data = HawkesPoint[]
+  processes = Dict{String},Vector{Int64}}
   println("$ndata data points:\n") 
   p0 = Parameters(lambda_0,[],Dict())
   for i in 1:ndata
@@ -79,6 +80,7 @@ function main(cmd_line = ARGS)
       p0.decay_params[field[1]] = [sigma_0,rho_0]
     end
     push!(data, HawkesPoint(field[1],myparse(Float64,field[2])))
+    push!(processes[field[1]],i)
     println(data[i])
   end
   println("\n$nmarks decay_params:\n",p0.decay_params)
@@ -86,16 +88,18 @@ function main(cmd_line = ARGS)
   omega1 = Matrix{Float64}(undef,ndata,ndata)
 #  k_hat = Matrix{Float64}(undef,ndata,ndata)
   rng = MersenneTwister(seed)
-  sum = 0
-  for i in 1:ndata
+  sum = p0.omega[1] = lambda_0
+  for i in 2:ndata
     push!(p0.omega,rand(rng))
     sum += p0.omega[i]
   end
   p0.omega ./= sum
 
   #OK, here we go
-  k_hat = fill(0.0,(ndata,ndata))
-  for i in 1:ndata
+  k_hat = fill(0.0,(ndata,ndata)) // posterior
+  k_hat_0 = fill(0.0,ndata,ndata)) // prior
+  omega1[1,1] = k_hat[1,1] = 1.0
+  for i in 2:ndata
     t_i = data[i].time
     sum = 0
     for j in 1:i-1
@@ -103,23 +107,41 @@ function main(cmd_line = ARGS)
       rho = p0.decay_params[data[j].mark][2]
       if j == 1
         t_j = 0
-        k_hat_0 = lambda*t_i
+        k_hat_0 = p0.lambda*t_i
       else
         t_j = (j == 1 ? 0 : data[j].time)
-        k_hat_0 = p0.sigma*(exp(-p0.rho*t_j) - exp(-p0.rho*t_i))/p0.rho
+        k_hat_0[i,j] = p0.sigma*(exp(-p0.rho*t_j) - exp(-p0.rho*t_i))/p0.rho
       end
-      omega1[i,j] = p0.omega[j]*sqrt(k_hat_0)/(t_i-t_j)
+      omega1[i,j] = p0.omega[j]*sqrt(k_hat_0[i,j])/(t_i-t_j)
       sum += omega1[i,j]
+    end
+    for j in 1:i-1
+      omega1[i,j] /= sum
       if i > j
         k_hat[i,j] = omega1[i,j] + k_hat[i-1,j]
       end
     end
-    for j in 1:i-1
-      omega1[i,j] /= sum
-    end
-    # OK, we have the posterior state probabilities w.r.t. the prior parameters (p0)
+    # OK, we have the posterior probability of state j at time i 
+    # and the expected number of arrivals at time i, both w.r.t. the prior parameters (p0)
+  end # for i
+
+  #Now we re-estimate the parameters
+  for j in 1:ndata
+    p0.omega[j] = sum[omega1[:,j])/ndata
   end
-  
+  p0.lambda = p0.omega[1]
+  for mark in p0.decay_params
+    for j in processes[mark]
+      moment1 = moment2 = 0.0
+      t_j = data[j].time
+      for i in j+1:ndata
+        t_ij = data[i].time - t_j
+        rate0 = k_hat[i,j]/t_ij
+        moment1 += rate0
+        moment2 += rate0*rate0
+      end
+      
+        
 end #main
 
 
