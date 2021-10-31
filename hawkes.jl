@@ -98,7 +98,7 @@ function main(cmd_line = ARGS)
   #OK, here we go
   k_hat = fill(0.0,(ndata,ndata)) // posterior
   k_hat_0 = fill(0.0,ndata,ndata)) // prior
-  omega1[1,1] = k_hat[1,1] = 1.0
+  omega1[1,1] = k_hat[1,1] = k_hat_0[1,1] = 1.0
   for i in 2:ndata
     t_i = data[i].time
     sum = 0
@@ -106,13 +106,12 @@ function main(cmd_line = ARGS)
       sigma = p0.decay_params[data[j].mark][1]
       rho = p0.decay_params[data[j].mark][2]
       if j == 1
-        t_j = 0
-        k_hat_0 = p0.lambda*t_i
+        k_hat_0[i,1] = p0.lambda*t_i
       else
-        t_j = (j == 1 ? 0 : data[j].time)
-        k_hat_0[i,j] = p0.sigma*(exp(-p0.rho*t_j) - exp(-p0.rho*t_i))/p0.rho
+        t_ij = (j == 1 ? t_i : t_i - data[j].time)
+        k_hat_0[i,j] = sigma*(1 - exp(-rho*t_ij))/rho
       end
-      omega1[i,j] = p0.omega[j]*sqrt(k_hat_0[i,j])/(t_i-t_j)
+      omega1[i,j] = p0.omega[j]*sqrt(k_hat_0[i,j])/t_ij #uses Stirling's approximation to Gamma
       sum += omega1[i,j]
     end
     for j in 1:i-1
@@ -130,16 +129,26 @@ function main(cmd_line = ARGS)
     p0.omega[j] = sum[omega1[:,j])/ndata
   end
   p0.lambda = p0.omega[1]
+
+  #finally, we use non-linear least-squares to re-estimate sigma_m and rho_m
   for mark in p0.decay_params
+    sigma = p0.decay_params[mark][1]
+    rho = p0.decay_params[mark][2]
+    A = [0 0]
+    b = [0]
     for j in processes[mark]
-      moment1 = moment2 = 0.0
       t_j = data[j].time
       for i in j+1:ndata
         t_ij = data[i].time - t_j
-        rate0 = k_hat[i,j]/t_ij
-        moment1 += rate0
-        moment2 += rate0*rate0
+        A = vcat([k_hat_0[i,j]/sigma (t*(sigma/rho -k_hat[i,j]) - k_hat_0[i,j]/rho)])
+        push!(b,k_hat[ij] - k_hat_0[i,j]) # residual
       end
+    end
+    delta = inverse(transpose(A)*A)*transpose(A)*b
+    sigma += delta[1]
+    rho += delta[2]
+  end
+  
       
         
 end #main
