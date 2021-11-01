@@ -380,24 +380,28 @@ We can now maximize $\tilde{Q}(\theta)$ by setting partial derivatives with resp
 zero and solving the resulting equations for the posterior parameters.  We first solve for $\omega_j$, keeping in
 mind the constraint
 $$
-\sum_{j=0}^N\omega_j = 1,
+\sum_{j=0}^{N-1}\omega_j = 1,
 $$
 which we will enforce using a Lagrange multiplier $\nu$ as follows:
-
+For any $l \in [0,N-1]$ we have
+$$
+\frac{\partial\tilde{Q}}{\partial\omega_l} = \sum_{i=1}^N\frac{\omega'_{il}}{\omega_l},
+$$
+hence we solve
 \begin{align*}
-  0 &= \frac{\partial}{\partial\omega_j}\left(\tilde{Q} + \nu(1-\sum_{j=0}^N\omega_j )\right) \\
-  &= \frac{1}\omega_j\sum_{i=1}^N\omega_{ij}' - \nu.
+  0 &= \frac{\partial}{\partial\omega_l}\left(\tilde{Q} + \nu(1-\sum_{j=0}^{N-1}\omega_j )\right) \\
+  &= \frac{1}\omega_l\sum_{i=1}^N\omega_{il}' - \nu.
 \end{align*}
 We conclude that
 \begin{equation}\label{omega_j:0}
   \begin{split}
-  \nu\omega_j &= \sum_{i=1}^N\omega_{ij}',\quad\text{whence} \\
-  \nu\sum_{j=0}^N\omega_j &= \sum_{i=1}^N\sum_{j=0}^N\omega'_{ij}.
+  \nu\omega_l &= \sum_{i=1}^N\omega_{il}',\quad\text{and summing over all l and interchanging the sums yields} \\
+  \nu\sum_{l=0}^{N-1}\omega_l &= \sum_{i=1}^{N}\sum_{l=0}^{N-1}\omega'_{il}.
   \end{split}
 \end{equation}
-Since
+However, since by definition we have
 $$
-\sum_{j=0}^N \omega_j = 1 = \sum_{j=0}^N\omega'_{ij},
+\sum_{l=0}^{N-1} \omega_l = 1 = \sum_{l=0}^{N-1}\omega'_{il}, 
 $$
 it follows that $\nu = N$ and thus \eqref{omega_j:0} yields
 \begin{equation}\label{omega_j}
