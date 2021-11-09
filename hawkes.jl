@@ -19,8 +19,13 @@ mutable struct Parameters
   lambda::Float64
   omega::Array{Float64}
   decay_params::Dict{String,Vector{Float64}}
-  #  rho::Array{Float64}
-#  sigma::Array{Float64}
+end
+
+function Base.println(p::Parameters)
+  println("Parameters:\nlambda: $(p.lambda)\ndecay parameters:")
+  for (mark,val) in p.decay_params
+    println("mark: $mark sigma: $(val[1]) rho: $(val[2])")
+  end
 end
 
 mutable struct HawkesPoint
@@ -127,7 +132,7 @@ function main(cmd_line = ARGS)
         else
           t_ij = (j == 1 ? t_i : t_i - data[j].time)
           k_hat_0[i,j] = sigma*(1 - exp(-rho*t_ij))/rho
-          if k_hat_0[i,j] <= 0
+          if k_hat_0[i,j] <= 0 || isnan(k_hat_0[i,j])
             println("k_hat_0[$i,$j] = $(k_hat_0[i,j]). rho = $rho, t_ij = $t_ij, sigma = $sigma")
             exit(0)
           end
@@ -158,7 +163,8 @@ function main(cmd_line = ARGS)
     end # for i
     println("log_likelihood at iteration $niters: $log_likelihood")
 
-    if niters < max_iters 
+    if niters < max_iters
+      println("begin iteration $niters ")
       #Now we re-estimate the parameters
       for j in 1:ndata
         p0.omega[j] = sum(omega1[j+1:ndata,j])/ndata # posterior state parameters
@@ -181,7 +187,7 @@ function main(cmd_line = ARGS)
       A = Matrix{Float64}(undef,10000,2)
       b = Vector{Float64}(undef,10000)
       for (mark,val) in p0.decay_params
-        println("\nprocess[$mark] has the following children: $(children[mark])")
+#        println("\nprocess[$mark] has the following children: $(children[mark])")
         sigma = val[1]
         rho = val[2]
         k = 1 #restart A and b 
@@ -199,26 +205,34 @@ function main(cmd_line = ARGS)
         A0 = A[1:k,:] #OK, we got k equations
         b0 = b[1:k]
         normal_mat = transpose(A0)*A0
-        println("got $k equations. det(normal_mat) = $(det(normal_mat))")
+ #       println("got $k equations. det(normal_mat) = $(det(normal_mat))")
         delta = inv(normal_mat)*(transpose(A0)*b0)
-        println("delta_sigma: $(delta[1]) delta_rho: $(delta[2])")
+ #       println("delta_sigma: $(delta[1]) delta_rho: $(delta[2])")
+        f = .1*sigma/abs(delta[1])
+        if f < 1; delta[1] *= f; end
         sigma += delta[1]
+        f = .1*rho/abs(delta[2])
+        if f < 1; delta[2] *= f; end
         rho += delta[2]
+#        println("sigma: $sigma  rho: $rho")
         ls_err = sqrt(dot(b0,b0)/k)
-        println("sigma/rho restimation for process $mark had rms error = $ls_err")
+        val[1] = sigma
+        val[2] = rho
+#        println("sigma/rho restimation for process $mark had rms error = $ls_err")
       end #for mark
     end # if niters < max_iters
     println("re-estimation ended for iteration $niters")
     niters += 1
   end #while niters <= max_iters
-  rnd = my_round(3)
-  for i in 1:ndata
-    print("time $i: ")
-    for j in 1:i-1
-      print(map(rnd,omega1[i,j])," ")
-    end
-    print("\n")
-  end            
+  println(p0)
+  # rnd = my_round(3)
+  # for i in 1:ndata
+  #   print("time $i: ")
+  #   for j in 1:i-1
+  #     print(map(rnd,omega1[i,j])," ")
+  #   end
+  #   print("\n")
+  # end            
 end #main
 
 

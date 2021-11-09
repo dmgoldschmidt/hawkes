@@ -9,7 +9,7 @@
 #include "util.h"
 #include "GetOpt.h"
 //#include "../include/gzstream.h"
-void convert(char* p, char* q){q = p;}
+void convert(char* p, char* q){*q = *p;}
 void convert(char*p, string& s){s = string(p);}
 
 template<typename KEY>
@@ -60,6 +60,7 @@ int main(int argc, char** argv){
   cl.get("key_type",key_type);
   cl.get("test_file",test_file);
 
-  if(key_type == "char*") test<char*>(nkeys,test_file);
+  if(key_type == "cstring") test<char*>(nkeys,test_file);
   else if (key_type == "string") test<string>(nkeys,test_file);
+  else cout << "unsupported key_type: "<<key_type<<endl;
 }
