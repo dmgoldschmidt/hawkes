@@ -41,7 +41,7 @@ struct HawkesPoint{
   double time;
 };
 ostream& operator<<(ostream& os, const HawkesPoint& h){
-  os << format("mark: %s time: %f\n",mark.c_str(),time);
+  os << format("mark: %s time: %f\n",h.mark.c_str(),time);
   return os;
 }
 
@@ -55,8 +55,8 @@ struct Mark{
   Mark(void) : name(""),rho(0),sigma(0),nkids(0),kids(10) {}
 };
 ostream& operator<<(ostream& os, const Mark& m){
-  os << format("%s: rho: %f sigma:%f children: ",name.c_str(),rho,sigma);
-  for(int i = 0;i <nkids;i++)os << kids[i],", ";
+  os << format("%s: rho: %f sigma:%f children: ",m.name.c_str(),m.rho,m.sigma);
+  for(int i = 0;i <m.nkids;i++)os << m.kids[i] <<", ";
   os <<endl;
   return os;
 }
@@ -101,13 +101,13 @@ int main(int argc, char** argv){
   
   
   Awk awk;
-  if(!awk.open(data_file)){
+  if(!awk.open(data_file.c_str())){
     cerr << "Can't open "<<data_file<<endl;
     exit(1);
   }
   int i = 0;
-  while((nf = awk.next()) != -1 && (ndata == 0?  true : i < ndata)){ // exit on EOF
-    if(nf != 2) continue;
+  while((awk.nf = awk.next()) != -1 && (ndata == 0?  true : i < ndata)){ // exit on EOF
+    if(awk.nf != 2) continue;
     data[i].mark = string(awk[1]);
     Mark m = marks[data[i].mark];
     if(m.name == ""){
@@ -128,22 +128,23 @@ int main(int argc, char** argv){
   Matrix<double> AtA(2,2); // normal matrix
   ColVector<double> Atb(2);
   ColVector<double> delta(2);
-  lambda = lambda_0;
-  omega.fill(1.0/ndata);
-
+  double lambda = lambda_0;
+  double sum = ndata*(ndata+1);
+  for(int i = 0;i < ndata;i++) omega.fill((ndata - i)/sum);
+  
   // begin EM iteration
-  niters = 0;
+  int niters = 0;
   while(niters <= max_iters){
     // compute posterior probability matrix omega1
     k_hat.fill(0.0);
-    k_hat_0.file(0.0);
+    k_hat_0.fill(0.0);
     omega1(0,0) = k_hat(0,0) = k_hat_0(0,0) = 1.0;
     double log_likelihood = 0.0;
-    for(i = 1;i < ndata;i++){
+    for(int i = 1;i < ndata;i++){
       double t_i = data[i].time;
       double t_ij;
-      row_sum = 0.0;
-      for(j = 0; j < i;j++){
+      double row_sum = 0.0;
+      for(int j = 0; j < i;j++){
         double sigma = marks[data[i].mark].sigma;
         double rho = marks[data[i].mark].rho;
         if(j == 0){
@@ -151,56 +152,60 @@ int main(int argc, char** argv){
           t_ij = t_i;
         }
         else{
-          t_ij = (j == 0 ? t_i : t_i - data[j].time);
+          t_ij = t_i - data[j].time;
           k_hat_0(i,j) = sigma*(1-exp(-rho*t_ij))/rho;
         }
         omega1(i,j) = omega[j]*sqrt(k_hat_0(i,j))/t_ij;
         row_sum += omega1(i,j);
       }
       log_likelihood += log(row_sum);
-      for(j = 0;j < ndata;j++) omega(i,j) /= row_sum;
+      for(int j = 0;j < ndata;j++) omega1(i,j) /= row_sum;
     }
     cout << "log likelihood at iteration "<<niters<<": "<<log_likelihood<<endl;
     if(niters < max_iters){
       // now we re-estimate the parameters
       cout << "begin iteration "<<niters<<endl;
-      for(j = 0;j < ndata;j++){
+      for(int j = 0;j < ndata;j++){
         omega[j] = 0.0;
         for(i = j;i < ndata;i++) omega[j] += omega1(i,j);
-        omega[j] \= ndata;
+        omega[j] /= ndata;
       }
       lambda = 0.0;
       for(i = 0;i < ndata;i++) lambda += omega1(i,0)/data[i].time;
       lambda /= ndata;
+      cout << "update for lambda: "<<lambda<<endl;
 
       // now re-estimate rho and sigma using non-linear least squares
       for(int m = 0;m < marks.nkeys();m++){
         Mark mark = marks(m);
         if(mark.nkids < 2) continue;
-        double sigma& = mark.sigma;
-        double rho& = mark.rho;
+        double& sigma = mark.sigma;
+        double& rho = mark.rho;
         double rms_error = 0;
         AtA.fill(0);
         Atb.fill(0);
-        for(int j = 0;j < mark.nkids;j++){ // get the equations for this mark
-          int j = mark.kids[m]; // next child for this mark
+        for(int k = 0; k < mark.nkids;k++){ // get the equations for this mark
+          int j = mark.kids[k]; // next child for this mark
           for(int i = j+1;i < ndata;i++){ // loop over all subsequent events
             double t_ij = data[i].time - data[j].time;
             A_k[0] = k_hat_0(i,j)/sigma;
             A_k[1] = t_ij*(sigma/rho - k_hat_0(i,j)) - k_hat_0(i,j)/rho;
             double b = k_hat(i,j) - k_hat_0(i,j); // residual
             AtA += A_k*A_k.Tr();
-            Atb += b*A_k;
+            Atb[0] += A_k[0]*b; Atb[1] += A_k[1]*b;
             rms_error += b*b;
           }
         }
-        delta = AtA.inv()*Atb;
+        delta = inv(AtA)*Atb;
+        rms_error = sqrt(rms_error);
         double f = .1*sigma/fabs(delta[0]); // bound changes to .1 of originals
         if(f < 1) delta[0] *= f;
         sigma += delta[0];
         f = .1*rho/fabs(delta[1]);
         if(f < 1) delta[0] *= f;
         rho += delta[1];
+        cout << format("update for mark %s: sigma: %f rho: %f rms_error: %f\n",
+                       mark.name.c_str(),mark.sigma,mark.rho,rms_error);
       } // on to the next mark
     } // end re-estimation
   } // on to the next EM iteration
