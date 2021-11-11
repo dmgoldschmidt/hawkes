@@ -15,11 +15,6 @@
 bool dump_flag(false);
 bool verbose(false);
 
-template<>
-int IndexPair<int,double>::sort_item(2);
-template<>
-int IndexPair<int,int>::sort_item(2);
-
 // struct SigRho{
 //   double sigma;
 //   double rho;
@@ -57,7 +52,7 @@ struct Mark{
   int nkids;
   Array<int> kids;
 
-  Mark(string& n = "", double r = 0, double s = 0, int nk = 0) : name(n),rho(r),sigma(s),nkids(nk),kids(10) {}
+  Mark(void) : name(""),rho(0),sigma(0),nkids(0),kids(10) {}
 };
 ostream& operator<<(ostream& os, const Mark& m){
   os << format("%s: rho: %f sigma:%f children: ",name.c_str(),rho,sigma);
@@ -129,12 +124,17 @@ int main(int argc, char** argv){
   Matrix<double> omega1(ndata,ndata); // posterior prob of state j at time i
   Matrix<double> k_hat(ndata,ndata); // posterior expected # events in state j up to time i
   Matrix<double> k_hat_0(ndata,ndata); // prior "
+  ColVector<double> A_k(2);
+  Matrix<double> AtA(2,2); // normal matrix
+  ColVector<double> Atb(2);
+  ColVector<double> delta(2);
   lambda = lambda_0;
   omega.fill(1.0/ndata);
 
   // begin EM iteration
   niters = 0;
   while(niters <= max_iters){
+    // compute posterior probability matrix omega1
     k_hat.fill(0.0);
     k_hat_0.file(0.0);
     omega1(0,0) = k_hat(0,0) = k_hat_0(0,0) = 1.0;
@@ -170,5 +170,39 @@ int main(int argc, char** argv){
         omega[j] \= ndata;
       }
       lambda = 0.0;
-      for(i = 0;i < ndata;i++) lambda += omega1(i,0)/data[i].time; 
+      for(i = 0;i < ndata;i++) lambda += omega1(i,0)/data[i].time;
+      lambda /= ndata;
+
+      // now re-estimate rho and sigma using non-linear least squares
+      for(int m = 0;m < marks.nkeys();m++){
+        Mark mark = marks(m);
+        if(mark.nkids < 2) continue;
+        double sigma& = mark.sigma;
+        double rho& = mark.rho;
+        double rms_error = 0;
+        AtA.fill(0);
+        Atb.fill(0);
+        for(int j = 0;j < mark.nkids;j++){ // get the equations for this mark
+          int j = mark.kids[m]; // next child for this mark
+          for(int i = j+1;i < ndata;i++){ // loop over all subsequent events
+            double t_ij = data[i].time - data[j].time;
+            A_k[0] = k_hat_0(i,j)/sigma;
+            A_k[1] = t_ij*(sigma/rho - k_hat_0(i,j)) - k_hat_0(i,j)/rho;
+            double b = k_hat(i,j) - k_hat_0(i,j); // residual
+            AtA += A_k*A_k.Tr();
+            Atb += b*A_k;
+            rms_error += b*b;
+          }
+        }
+        delta = AtA.inv()*Atb;
+        double f = .1*sigma/fabs(delta[0]); // bound changes to .1 of originals
+        if(f < 1) delta[0] *= f;
+        sigma += delta[0];
+        f = .1*rho/fabs(delta[1]);
+        if(f < 1) delta[0] *= f;
+        rho += delta[1];
+      } // on to the next mark
+    } // end re-estimation
+  } // on to the next EM iteration
+  // output results here
 }  
