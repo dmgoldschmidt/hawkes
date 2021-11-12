@@ -73,17 +73,18 @@ int main(int argc, char** argv){
   double sigma_0 = 2.0;
   double rho_0 = 1;
   double lambda_0 = .1;
-  int max_iters = 10;
+  int max_iters = 5;
 
   GetOpt cl(argc,argv); // parse command line
   cl.get("data_file",data_file); cout << "data file: "<<data_file<<endl;
   cl.get("model_output_file",model_output_file); cout << "model output to "<<model_output_file<<endl;
   cl.get("file_dir",file_dir); cout << "file directory is "<<file_dir<<endl;
-  cl.get("ndata",ndata);
-  cl.get("sigma_0",sigma_0);
-  cl.get("rho_0",rho_0);
-  cl.get("lambda_0",lambda_0);
-  cl.get("max_iters",max_iters);
+  cl.get("ndata",ndata); cout << "ndata: "<<ndata<<endl;
+  cl.get("sigma_0",sigma_0); cout << "sigma_0: "<<sigma_0<<endl;
+  cl.get("rho_0",rho_0); cout << "rho_0: "<<rho_0<<endl;
+  cl.get("lambda_0",lambda_0); cout << "lambda_0: "<<lambda_0<<endl;
+  cl.get("max_iters",max_iters); cout << "max iterations: "<<max_iters<<endl;
+  
   
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
   if(file_dir !=""){
@@ -144,6 +145,7 @@ int main(int argc, char** argv){
       double t_i = data[i].time;
       double t_ij;
       double row_sum = 0.0;
+      int mode = 0;
       for(int j = 0; j < i;j++){
         double sigma = marks[data[i].mark].sigma;
         double rho = marks[data[i].mark].rho;
@@ -158,10 +160,12 @@ int main(int argc, char** argv){
         double& kk = k_hat_0(i,j);
         omega1(i,j) = omega[j]*exp(kk*(log(kk)-1) - gammln(kk)-log(t_ij));
         assert(omega1(i,j) > 0);
+        if(omega1(i,j) > omega1(i,mode)) mode = j;
         row_sum += omega1(i,j);
       }
       log_likelihood += log(row_sum);
       for(int j = 0;j < ndata;j++) omega1(i,j) /= row_sum;
+      cout << format("i = %d: mode: process %d (%f)\n",i,mode,omega1(i,mode));
     }
     cout << "log likelihood at iteration "<<niters<<": "<<log_likelihood<<endl;
     if(niters < max_iters){
@@ -211,6 +215,7 @@ int main(int argc, char** argv){
                        mark.name.c_str(),mark.sigma,mark.rho,rms_error);
       } // on to the next mark
     } // end re-estimation
+    niters++;
   } // on to the next EM iteration
   // output results here
 }  
