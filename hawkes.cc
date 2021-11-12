@@ -65,7 +65,7 @@ ostream& operator<<(ostream& os, const Mark& m){
  
 int main(int argc, char** argv){
 
-  string data_file = "marked_events.txt";
+  string data_file = "hawkes_test_data.txt";
   string model_input_file = "";
   string model_output_file = "model.out";
   string file_dir = "";
@@ -109,7 +109,7 @@ int main(int argc, char** argv){
   while((awk.nf = awk.next()) != -1 && (ndata == 0?  true : i < ndata)){ // exit on EOF
     if(awk.nf != 2) continue;
     data[i].mark = string(awk[1]);
-    Mark m = marks[data[i].mark];
+    Mark& m = marks[data[i].mark];
     if(m.name == ""){
       m.name = data[i].mark;
       m.sigma = sigma_0;
@@ -155,7 +155,9 @@ int main(int argc, char** argv){
           t_ij = t_i - data[j].time;
           k_hat_0(i,j) = sigma*(1-exp(-rho*t_ij))/rho;
         }
-        omega1(i,j) = omega[j]*sqrt(k_hat_0(i,j))/t_ij;
+        double& kk = k_hat_0(i,j);
+        omega1(i,j) = omega[j]*exp(kk*(log(kk)-1) - gammln(kk)-log(t_ij));
+        assert(omega1(i,j) > 0);
         row_sum += omega1(i,j);
       }
       log_likelihood += log(row_sum);
@@ -196,13 +198,14 @@ int main(int argc, char** argv){
             rms_error += b*b;
           }
         }
-        delta = inv(AtA)*Atb;
+        Matrix<double> AtAinv = inv(AtA);
+        delta = AtAinv*Atb;
         rms_error = sqrt(rms_error);
         double f = .1*sigma/fabs(delta[0]); // bound changes to .1 of originals
         if(f < 1) delta[0] *= f;
         sigma += delta[0];
         f = .1*rho/fabs(delta[1]);
-        if(f < 1) delta[0] *= f;
+        if(f < 1) delta[1] *= f;
         rho += delta[1];
         cout << format("update for mark %s: sigma: %f rho: %f rms_error: %f\n",
                        mark.name.c_str(),mark.sigma,mark.rho,rms_error);
