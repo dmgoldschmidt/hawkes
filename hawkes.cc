@@ -141,6 +141,7 @@ int main(int argc, char** argv){
     k_hat_0.fill(0.0);
     omega1(0,0) = k_hat(0,0) = k_hat_0(0,0) = 1.0;
     double log_likelihood = 0.0;
+    double score = 0.0;
     for(int i = 1;i < ndata;i++){
       double t_i = data[i].time;
       double t_ij;
@@ -165,9 +166,12 @@ int main(int argc, char** argv){
       }
       log_likelihood += log(row_sum);
       for(int j = 0;j < ndata;j++) omega1(i,j) /= row_sum;
-      cout << format("i = %d: mode: process %d (%f)\n",i,mode,omega1(i,mode));
+      int truth = atoi(data[i].mark.c_str());
+      cout << format("i = %d: mode: process %d (%f) truth: process %d\n",i,mode,omega1(i,mode),truth);
+      if(i > 1)score += log(i*omega1(i,truth));
     }
     cout << "log likelihood at iteration "<<niters<<": "<<log_likelihood<<endl;
+    cout << "scoring rate: %f bits/obs\n",score/((ndata-1)*log(2));
     if(niters < max_iters){
       // now we re-estimate the parameters
       cout << "begin iteration "<<niters<<endl;
