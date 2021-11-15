@@ -95,18 +95,22 @@ int main(int argc, char** argv){
   while(next_process < data.nitems()){
     Process& parent = processes[data[next_process].mark]; // the child becomes a parent
     double t0 = data[next_process].time;
-    cout << "new parent: "<<parent<<" time: "<<t0<<endl;
-    Process child(next_process,parent.no,parent.generation+1,t0);
+    Process child;
+    if(next_process > 0) child = Process(next_process,parent.no,parent.generation+1,t0);
+    else child = fake;
+    cout << "new process: "<<child <<" time: "<<t0<<endl;
     processes[next_process] = child;
     double t = t0;
+    int npoints = 0;
     while(true){
       double sigma = sigma_0;
-      double lambda = sigma*exp(-rho*(t-t0));
-      
+      double lambda = child.no == 0? lambda_0 : sigma*exp(-rho*(t-t0));
       t -= log(1-rng.uniform())/lambda; // delta_t is exponentially distributed with rate lambda
       if(t > total_time) break;
-      data.add(HawkesPoint(next_process,t));
+      data.add(HawkesPoint(child.no,t));
+      npoints++;
     }
+    cout << "added "<<npoints<<" points for process "<<child.no<<endl;
     next_process++;
   } // OK, create the next child process
   data.sort();
