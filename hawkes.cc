@@ -171,7 +171,7 @@ int main(int argc, char** argv){
       if(i > 1)score += log(i*omega1(i,truth));
     }
     cout << "log likelihood at iteration "<<niters<<": "<<log_likelihood<<endl;
-    cout << "scoring rate: %f bits/obs\n",score/((ndata-1)*log(2));
+    cout << format("scoring rate: %f bits/obs\n",score/((ndata-1)*log(2)));
     if(niters < max_iters){
       // now we re-estimate the parameters
       cout << "begin iteration "<<niters<<endl;
