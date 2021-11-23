@@ -45,16 +45,16 @@ ostream& operator<<(ostream& os, const HawkesPoint& h){
   return os;
 }
 
-struct Mark{
+struct FullMark{
   string name;
   double rho;
   double sigma;
   int nkids;
   Array<int> kids;
 
-  Mark(void) : name(""),rho(0),sigma(0),nkids(0),kids(10) {}
+  FullMark(void) : name(""),rho(0),sigma(0),nkids(0),kids(10) {}
 };
-ostream& operator<<(ostream& os, const Mark& m){
+ostream& operator<<(ostream& os, const FullMark& m){
   os << format("%s: rho: %f sigma:%f children: ",m.name.c_str(),m.rho,m.sigma);
   for(int i = 0;i <m.nkids;i++)os << m.kids[i] <<", ";
   os <<endl;
@@ -74,6 +74,7 @@ int main(int argc, char** argv){
   double rho_0 = 1;
   double lambda_0 = .1;
   int max_iters = 5;
+  int simulation = 1;
 
   GetOpt cl(argc,argv); // parse command line
   cl.get("data_file",data_file); cout << "data file: "<<data_file<<endl;
@@ -84,7 +85,7 @@ int main(int argc, char** argv){
   cl.get("rho_0",rho_0); cout << "rho_0: "<<rho_0<<endl;
   cl.get("lambda_0",lambda_0); cout << "lambda_0: "<<lambda_0<<endl;
   cl.get("max_iters",max_iters); cout << "max iterations: "<<max_iters<<endl;
-  
+  cl.get("simulation",simulation); cout << "simulation: "<<simulation<<endl;
   
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
   if(file_dir !=""){
@@ -98,7 +99,7 @@ int main(int argc, char** argv){
     exit(1);
   }
   Array<HawkesPoint> data(10000);
-  Dict<string,Mark> marks;
+  Dict<string,FullMark> full_marks;
   
   
   Awk awk;
@@ -110,7 +111,9 @@ int main(int argc, char** argv){
   while((awk.nf = awk.next()) != -1 && (ndata == 0?  true : i < ndata)){ // exit on EOF
     if(awk.nf != 2) continue;
     data[i].mark = string(awk[1]);
-    Mark& m = marks[data[i].mark];
+    if(data[i].mark == "0") data[i].mark = "base";
+    else data[i].mark = "1";
+    FullMark& m = full_marks[data[i].mark];
     if(m.name == ""){
       m.name = data[i].mark;
       m.sigma = sigma_0;
@@ -136,8 +139,8 @@ int main(int argc, char** argv){
   // begin EM iteration
   int niters = 0;
   while(niters <= max_iters){
+    // cout << "begin omega computation for iteration "<<niters<<endl;
     // compute posterior probability matrix omega1
-    k_hat.fill(0.0);
     k_hat_0.fill(0.0);
     omega1(0,0) = k_hat(0,0) = k_hat_0(0,0) = 1.0;
     double log_likelihood = 0.0;
@@ -148,8 +151,8 @@ int main(int argc, char** argv){
       double row_sum = 0.0;
       int mode = 0;
       for(int j = 0; j < i;j++){
-        double sigma = marks[data[i].mark].sigma;
-        double rho = marks[data[i].mark].rho;
+        double& sigma = full_marks[data[i].mark].sigma;
+        double& rho = full_marks[data[i].mark].rho;
         if(j == 0){
           k_hat_0(i,0) = lambda*t_i;
           t_ij = t_i;
@@ -161,23 +164,32 @@ int main(int argc, char** argv){
         double& kk = k_hat_0(i,j);
         omega1(i,j) = omega[j]*exp(kk*(log(kk)-1) - gammln(kk)-log(t_ij));
         assert(omega1(i,j) > 0);
-        if(omega1(i,j) > omega1(i,mode)) mode = j;
+        if(omega1(i,j) > omega1(i,mode)) mode = j; // find the largest entry in row i
         row_sum += omega1(i,j);
       }
+      
       log_likelihood += log(row_sum);
       for(int j = 0;j < ndata;j++) omega1(i,j) /= row_sum;
-      int truth = atoi(data[i].mark.c_str());
-      cout << format("i = %d: mode: process %d (%f) truth: process %d\n",i,mode,omega1(i,mode),truth);
-      if(i > 1)score += log(i*omega1(i,truth));
+      int truth;
+      if(simulation){
+        truth = data[i].mark == "base"? 0 : atoi(data[i].mark.c_str()); // convert the string to an integer
+                                                                        //(only for simulation data)
+        if(i > 1)score += log(i*omega1(i,truth));
+      }
     }
     cout << "log likelihood at iteration "<<niters<<": "<<log_likelihood<<endl;
-    cout << format("scoring rate: %f bits/obs\n",score/((ndata-1)*log(2)));
+    if(simulation) cout << format("scoring rate at iteration %d: %f bits/obs\n",niters,score/((ndata-2)*log(2)));
+
     if(niters < max_iters){
       // now we re-estimate the parameters
-      cout << "begin iteration "<<niters<<endl;
+      cout << "begin re-estimation for iteration "<<niters<<endl;
+      k_hat.fill(0.0);
       for(int j = 0;j < ndata;j++){
         omega[j] = 0.0;
-        for(i = j;i < ndata;i++) omega[j] += omega1(i,j);
+        for(i = j+1;i < ndata;i++){
+          omega[j] += omega1(i,j);
+          k_hat(i,j) = k_hat(i-1,j) + omega1(i,j);
+        }
         omega[j] /= ndata;
       }
       lambda = 0.0;
@@ -186,12 +198,15 @@ int main(int argc, char** argv){
       cout << "update for lambda: "<<lambda<<endl;
 
       // now re-estimate rho and sigma using non-linear least squares
-      for(int m = 0;m < marks.nkeys();m++){
-        Mark mark = marks(m);
-        if(mark.nkids < 2) continue;
+      for(int m = 0;m < full_marks.nkeys();m++){
+        FullMark& mark = full_marks(m); 
+        if(mark.nkids < 2 || mark.name == "base") continue; // this only applies to children
+        cout << "processing FullMark "<<mark.name<<": "<<mark;
         double& sigma = mark.sigma;
         double& rho = mark.rho;
+        cout << "re-estimation is using sigma = "<<sigma<<endl;
         double rms_error = 0;
+        int neq = 0;
         AtA.fill(0);
         Atb.fill(0);
         for(int k = 0; k < mark.nkids;k++){ // get the equations for this mark
@@ -201,25 +216,31 @@ int main(int argc, char** argv){
             A_k[0] = k_hat_0(i,j)/sigma;
             A_k[1] = t_ij*(sigma/rho - k_hat_0(i,j)) - k_hat_0(i,j)/rho;
             double b = k_hat(i,j) - k_hat_0(i,j); // residual
+            //            cout << k_hat(i,j)<<" "<<k_hat_0(i,j)<<" "<<b<<endl;
             AtA += A_k*A_k.Tr();
             Atb[0] += A_k[0]*b; Atb[1] += A_k[1]*b;
             rms_error += b*b;
+            neq++;
           }
         }
         Matrix<double> AtAinv = inv(AtA);
         delta = AtAinv*Atb;
-        rms_error = sqrt(rms_error);
+        cout << "AtAinv:\n"<<AtAinv<<"Atb:\n"<<Atb<<endl;
+        cout << "raw delta:\n"<<delta<<endl;
+        rms_error = sqrt(rms_error/neq);
         double f = .1*sigma/fabs(delta[0]); // bound changes to .1 of originals
         if(f < 1) delta[0] *= f;
         sigma += delta[0];
         f = .1*rho/fabs(delta[1]);
         if(f < 1) delta[1] *= f;
         rho += delta[1];
-        cout << format("update for mark %s: sigma: %f rho: %f rms_error: %f\n",
-                       mark.name.c_str(),mark.sigma,mark.rho,rms_error);
+        cout << "bounded delta:\n"<<delta;
+        cout << format("update for mark %s at iteration %d: sigma: %f rho: %f rms_error: %f\n",
+                       mark.name.c_str(),niters,mark.sigma,mark.rho,rms_error);
       } // on to the next mark
     } // end re-estimation
     niters++;
+    //    if(niters > 2) exit(0);
   } // on to the next EM iteration
   // output results here
 }  
