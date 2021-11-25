@@ -138,48 +138,6 @@ maximized is
 where, as above, $\omega'$ denotes the prior value, while $\omega$ and $\eta$ are the unknown parameters
 to be solved for which will maximize $\tilde{Q}$.
 
-\section{Nonlinear Least Squares}\label{NLS}
-Here we are given $m$ non-linear equations $\{f_i(X) = y_i\}$ in $n$ unknowns $X = (x_1,\dots,x_n)$,
-together with an initial guess $\hat{X}$ for $X$.  We assume that the functions $f_(X)$ are differentiable
-and that $m \ge n$. Typically, we in fact have $m >> n$.  We would like to ``solve'' the system by minimizing
-the sum of squares of the residuals
-$$
-S := \sum_{i=1}^m (f_i(X)-y_i)^2.
-$$
-This can be achieved using any one of a number of gradient descent methods, but we will outline here a
-simple approach which generalizes Newton's method.
-
-We first compute
-$$
-a_{ij} := \frac{\partial{f_i}}{\partial{x_j}}(\hat{X}),\quad\text{and}\quad b_i := y_i - f_i(\hat{X}).
-$$
-We then apply the first-order Taylor approximation of $f_i$ about  $X = \hat{X}$  
-\begin{equation} \label{Taylor}
-f_i(X) \approx f_i(\hat{X}) + \sum_{j=1}^na_{ij}(X - \hat{X}).
-\end{equation}
-obtaining an overdetermined linear system $A(X-\hat{X}) = b$, 
-where
-$$
-A := [a_{ij}]\quad\text{and}\quad b := [b_i].
-$$
-This system has the least-squares solution
-$$
-X = \hat{X} + (A^tA)^{-1}A^tb.
-$$
-
-We can then replace our initial guess $\hat{X}$ by $X$, and iterate this procedure as required.
-Note that when $m = n$ there is no need to use least squares and the algorithm reduces to Newton's method.
-
-The success of this algorithm depends on two things:
-\begin{enumerate}
-\item The non-singularity of the normal matrix $A^tA$,
-\item The strength of the approximation \eqref{Taylor}.
-\end{enumerate}
-If the normal matrix is (near) singular, we can set one or more variables to zero and solve for the remaining
-variables.  In the second case, we observe that the algorithm does not converge.  This is usually because the
-correction $\Delta{X} = X-\hat{X}$ is too large. A possible solution is to scale $\Delta{X}$ by a fraction
-$\lambda < 1$.  
-
 \section{The Homogeneous Poisson Process}
 For our purposes, a poisson process of rate $\lambda$ will be defined as an increasing sequence of random variables
 $ \{0 < T_1 < T_2 < \dots\}$ defined on $(0,\infty)$ such that $\{\tau_i = T_i-T_{i-1}~|~ i = 1,2,\dots\}$ are i.i.d.
@@ -190,7 +148,7 @@ event, where often the event is the arrival of something.  So in the following, 
 The quantity of interest here is $Pd(T_n = t)$, the probability density that the $n^{th}$ arrival occurs at time $t$.
 \begin{Thm}
   Let $\{0 < T_1<\dots<T_n<... \}$ be a Poisson process of rate $\lambda$.  Then
-  \begin{equation}\label{erlang}
+  \begin{equation}\label{gamma_dist}
   Pd(T_n = t) = \frac{\lambda^nt^{n-1}}{(n-1)!}e^{-\lambda{t}}.
   \end{equation}
   \begin{proof}
@@ -206,9 +164,10 @@ The quantity of interest here is $Pd(T_n = t)$, the probability density that the
     \end{align*}
   \end{proof}
 \end{Thm}
-The probability density \eqref{erlang} is known as the gamma density in the literature.
+The probability density \eqref{gamma_dist} is known as the gamma density in the literature.
 
-Now define $\eta(t)$ to be the ``counting function'' which is the total number of arrivals up to time $t$.
+Now define $\eta(t)$ to be the ``counting function'' which is the total number of arrivals up to time $t$. $\eta(t)$
+is an integer-valued random variable defined on $(0,\infty)$.
 \begin{Cor}
   For a Poisson process of rate $\lambda$ as in the theorem, 
   \begin{equation}\label{poisson}
@@ -261,12 +220,12 @@ and the mean rate in that interval is
 
 In the sequel, we will approximate an inhomogenous Poisson process with exponentially decaying rate $\lambda(t)$
 in an interval $[t_0,t_1]$ by the homogeneous Poisson process with rate $\hat{\lambda}(t_0,t_1)$.  In particular,
-\eqref{erlang} becomes
-\begin{equation}\label{erlang:1}
+\eqref{gamma_dist} becomes
+\begin{equation}\label{gamma_dist:1}
   Pd(T_n = t) = \frac{\hat{\lambda}(0,t)^nt^{n-1}}{(n-1)!}e^{-t\hat{\lambda}(0,t)},
 \end{equation}
 and if $n$ is a random variable whose distribution is known but whose value is unknown, we will further approximate
-\eqref{erlang} by substituting $\hat{n}(0,t)$ for $n$ in \eqref{erlang:1}.
+\eqref{gamma_dist} by substituting $\hat{n}(0,t)$ for $n$ in \eqref{gamma_dist:1}.
 
 
 \section{The Hawkes Process}
@@ -321,11 +280,11 @@ if $\P_j$ has generated $k_{ij}-1$ previous events prior to time $t_i$, then we 
 \begin{equation}\label{p_ij}
   p_{ij} :=  Pd(T_i = t_i \mid j, k_{ij}) = \frac{\lambda_{ij}^{k_{ij}}t_{ij}^{(k_{ij}-1)}}{(k_{ij}-1)!}e^{-\lambda_{ij}t_{ij}}
 \end{equation}
-by \eqref{erlang}, where $\lambda_{ij}$ and $t_{ij}$ were defined above.
+by \eqref{gamma_dist}, where $\lambda_{ij}$ and $t_{ij}$ were defined above.
 
 Unfortunately, however, neither the value of $k_{ij}$ nor even the value of $j$ is  observed, i.e. we don't know
 which process $\P_j$ generated the event $T_i = t_i$, nor do we know how many events were generated by $\P_j$
-prior to $t_i$.  Thus, we can't use \eqref{erlang} directly. Instead,
+prior to $t_i$.  Thus, we can't use \eqref{gamma_dist} directly. Instead,
 we define a hidden state space $S := \{0,1,2,\dots,N\}$ and assume that $j\in{S}$ has probability $Pr(j) := \omega_j$.
 This makes $j$ a random variable with a prior distribution and converts \eqref{p_ij} to a mixture distribution, but
 we still don't know the value of $k_{ij}$.  So we
@@ -431,10 +390,62 @@ Substituting this approximation into \eqref{Q1} yields
   - .5\log(2\pi) \right),
   \end{split}
 \end{equation}
-and hence
+and hence, using Stirling's approximation, we have 
 \begin{equation}\label{dQ_dk}
-  \frac{\partial\tilde{Q}}{\partial\k_{ij}} = \frac{\omega'_{ij}}{2\k_{ij}}.
+  \frac{\partial\tilde{Q}}{\partial\k_{ij}} = \begin{cases}
+\frac{\omega'_{ij}}{2\k_{ij}}&\text{for $i > j$,}\\
+0 & \text{otherwise}.
+\end{cases}
 \end{equation}
+
+
+For the sake of simplicity, we will now drop the dependence of $\sigma$ and $\rho$ on the mark $m$, which means
+that all child processes have the same parameters.  So there are now three parameters $\lambda_0$, $\sigma$, and
+$\rho$ which need to be re-estimated by choosing them to increase, if not maximize, $\tilde{Q}$.  
+Using \eqref{Q2}, we see that each of these parameters only affect $\tilde{Q}$ indirectly, via $\k_{ij}$, and we recall
+from \eqref{k_hat} that
+$$
+\k_{ij} = \begin{cases}
+\lambda_0t_{ij} & \text{if $j = 0$}\\
+\frac{\sigma}{\rho}(1-e^{-\rho{t_{ij}}}) & \text{otherwise}.
+\end{cases}
+$$
+In particular, for $j = 0$ \eqref{dQ_dk} immediately implies
+\begin{equation}\label{dQ_dlambda}
+\frac{\partial\tilde{Q}}{\partial\lambda_0} = \sum_{i=1}^N\frac{\omega'_{i0}}{2\k_{ij}}t_{ij} 
+= \frac{1}{2\lambda_0}\sum_{i=1}^N\omega'_{i0}.
+\end{equation}
+
+Next, it's easy to see that
+\begin{equation}\label{dQ_dsigma}
+\frac{\partial\tilde{Q}}{\partial\sigma} = \sum_{i>j>0}\frac{\omega'_{ij}}{2\k_{ij}}\frac{\k_{ij}}{\sigma} 
+= \frac{1}{2\sigma}\sum_{i>j>0}\omega'_{ij}.
+\end{equation}
+
+And finally, we have
+
+\begin{equation}\label{dQ_drho}
+\begin{split}
+\frac{\partial\tilde{Q}}{\partial\rho} &= \sum_{i>j>0}\frac{\omega'_{ij}}{2\k_{ij}}\left(-\frac{\sigma}{\rho^2}(1-e^{-\rho{t_{ij}}})
++\frac{\sigma}{\rho}t_{ij}e^{-\rho{t_{ij}}}\right) \\
+&= \sum_{i>j>0}\frac{\omega'_{ij}}{2\k_{ij}}\left(-\frac{\k_{ij}}{\rho} -t_{ij}(\k_{ij} - \frac{\sigma}{\rho})\right)\\
+&= \frac{1}{2}\sum_{i>j>0}\omega'_{ij}\left(-\frac{1}{\rho} -t_{ij}(1 - \frac{\sigma}{\rho\k_{ij}})\right).
+\end{split}
+\end{equation}
+    
+%\section{Numerical Results}
+\end{document}
+
+
+Indeed, a further simplification is available using the approximation 
+$$
+\log(1-x) = -x + O(x^2)\quad(0<x<1).
+$$
+Then for $j\in J(m)$ we get
+\begin{align*}
+\log(\k_{ij}) &\approx \log(\sigma_m) - \log(\rho_m) + \log(1-e^{-\rho_mt_{ij}})\\
+&= \log(\sigma_m) -\log(\rho_m) - e^{-\rho_mt_{ij}}.
+\end{align*}
 
 
 We can now solve for $\k_{ij}$.  We will enforce a constraint, namely that
@@ -510,9 +521,6 @@ We then evaluate \eqref{k_ij} and \eqref{d_sigma,rho} at the prior parameters $\
 overdetermined linear equations in $\Delta\sigma_m$ and $\Delta\rho_m$ as in section \ref{NLS} which we use
 to reestimate $\sigma_m$ and $\rho_m$.  We can then choose to iterate by recomputing partials, or just proceed
 with another EM iteration.
-
-%\section{Numerical Results}
-\end{document}
 
 
 The probability density of any finite set of arrival times
