@@ -15,26 +15,78 @@
 bool dump_flag(false);
 bool verbose(false);
 
-// struct SigRho{
-//   double sigma;
-//   double rho;
-// };
+struct Grad{ // subclass this for callback gradient evaluation
+  virtual ColVector<double>& Grad::operator()(double& ColVector<double>x) = 0;
+}
 
-// struct Parameters{
-//   double lambda;
-//   Array<double> omega;
-//   Dict<string,SigRho> decay_params;
+struct Adam {
+  double alpha; // stepsize
+  int dim; // dimension
+  double beta1; // decay rate for mean1 
+  double beta2; // decay rate for mean2
+  double eps; // error tolerance
+  Grad& grad; // gradient functor
+  ColVector<double> m_t;
+  ColVector<double> v_t;
+  ColVector<double> delta;
+  ColVector<double> g; // gradient at step t
+  double t;
+  int max_iters;
 
-//   Parameters(int block_size = 100):omega(block_size){}
-// };
-// ostream& operator<<(ostream& os, const Parameters& p){
-//   os <<format("\nlambda: %f decay_paramers:\n",p.lambda);
-//   for(int i= 0;i < p.decay_params.nkeys();i++){
-//     os << format("mark: %s sigma: %f rho: %f\n",decay_params.key(i).c_str(),
-//                  decay_params(i).sigma,decay_params(i).rho);
-//   }
-//   return os;
-// }
+  Adam(Grad& g, int d, int m = 10, double a = .001, double b1 = .9 ,double b2 = .999, double e = .10e-8) :
+    grad(g), dim(d), max_iters(m), alpha(a), beta1(b1), beta2(b2), t(1), m_t(d), v_t(d), delta(d) {}
+
+  void operator()(ColVector<double>& theta){
+    assert(theta.nrows() == dim);
+    double b1 = beta1; // re-initialize the betas
+    double b2 = beta2;
+    m_t.fill(0);
+    v_t.fill(0);
+    double err = eps + 1;
+    int niters = 0;
+    
+    while(err > eps && niters < max_iters){
+      g = grad(theta);
+      assert(g.nrows() == dim);
+      m_t = (m_t*beta1 + g*(1-beta1))/(1-b1);
+      for(int i = 0;i < dim;i++) g[i] = g[i]*g[i];
+      v_t = (v_t*beta2 + g*(1-beta2))/(1-b2);
+      for(int i = 0;i < dim;i++) delta[i] = alpha*m_t[i]/(sqrt(v_t[i])+eps);
+      theta += delta;
+      b1 *= beta1;
+      b2 *= beta2;
+      err = 0;
+      for(int i = 0;i < dim;i++) err += delta[i]*delta[i];
+      err = sqrt(err);
+      niters++;
+    }
+  }
+};
+        
+struct HawkesGrad : public Grad {
+  ColVector<double> grad;
+  Matrix<double>& omega1;
+  int N;
+  int c;
+  HawkesGrad(Matrix<double>& om) : omega1(om), N(om.nrows()), c(om.ncols()), grad(3) {}
+
+  ColVector& operator()(ColVector& theta){
+    double sum = 0;
+    for(int i = 0;i < N;i++)sum += omega1(i,0);
+    grad[0] = sum/(2*theta[0]); // dQ_dlambda
+    sum = sum1 = 0;
+    for(int j = 1;j < c;j++){
+      for(int i = j+1;i < N;i++){
+        sum += omega1(i,j);
+        sum1 += (t[i]-t[j])*(theta[2] - theta[1]/k_hat_0(i,j)
+    }
+    grad[1] = sum/(2*theta[1]); // dQ_dsigma
+    sum1 = 0;
+    
+    
+
+};
+
 
 struct HawkesPoint{
   string mark;

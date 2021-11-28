@@ -410,29 +410,86 @@ $$
 \frac{\sigma}{\rho}(1-e^{-\rho{t_{ij}}}) & \text{otherwise}.
 \end{cases}
 $$
-In particular, for $j = 0$ \eqref{dQ_dk} immediately implies
-\begin{equation}\label{dQ_dlambda}
-\frac{\partial\tilde{Q}}{\partial\lambda_0} = \sum_{i=1}^N\frac{\omega'_{i0}}{2\k_{ij}}t_{ij} 
-= \frac{1}{2\lambda_0}\sum_{i=1}^N\omega'_{i0}.
+Taking partial derivatives, we have
+\begin{equation}\label{dk_dparams}
+  \begin{split}
+    \frac{\partial\k_{i0}}{\partial\lambda_0} &= 
+        t_{i0} \\
+    \frac{\partial\k_{ij}}{\partial\sigma} &= 
+      \frac{\k_{ij}}{\sigma} \quad\text{for $j > 0$, and} \\
+    \frac{\partial\k_{ij}}{\partial\rho} &=
+    \left(-\frac{\k_{ij}}{\rho} -t_{ij}(\k_{ij} - \frac{\sigma}{\rho})\right)\quad\text{for } j > 0.
+  \end{split}
 \end{equation}
 
-Next, it's easy to see that
+
+
+
+
+In particular, for $j = 0$,  \eqref{dQ_dk} and \eqref{dk_dparams} immediately imply
+\begin{equation}\label{dQ_dlambda}
+  \begin{split}
+\frac{\partial\tilde{Q}}{\partial\lambda_0} &= \sum_{i=1}^N\frac{\omega'_{i0}}{2\k_{i0}}t_{i0} 
+= \frac{1}{2\lambda_0}\sum_{i=1}^N\omega'_{i0} = \frac{W'_0}{2\lambda_0},\quad\text{where}\\
+W'_0 :&= \sum_{i=1}^N\omega'_{i0}.
+\end{split}
+\end{equation}
+
+It's also easy to see that
 \begin{equation}\label{dQ_dsigma}
-\frac{\partial\tilde{Q}}{\partial\sigma} = \sum_{i>j>0}\frac{\omega'_{ij}}{2\k_{ij}}\frac{\k_{ij}}{\sigma} 
-= \frac{1}{2\sigma}\sum_{i>j>0}\omega'_{ij}.
+\begin{split}
+  \frac{\partial\tilde{Q}}{\partial\sigma} &= \sum_{i>j>0}\frac{\omega'_{ij}}{2\k_{ij}}\frac{\k_{ij}}{\sigma} 
+= \frac{1}{2\sigma}\sum_{i>j>0}\omega'_{ij} = \frac{W'_1}{2\sigma},
+  \quad\text{where} \\
+  W'_1 :&= \sum_{i>j>0}\omega'_{ij}.
+  \end{split}
 \end{equation}
 
 And finally, we have
 
 \begin{equation}\label{dQ_drho}
 \begin{split}
-\frac{\partial\tilde{Q}}{\partial\rho} &= \sum_{i>j>0}\frac{\omega'_{ij}}{2\k_{ij}}\left(-\frac{\sigma}{\rho^2}(1-e^{-\rho{t_{ij}}})
-+\frac{\sigma}{\rho}t_{ij}e^{-\rho{t_{ij}}}\right) \\
-&= \sum_{i>j>0}\frac{\omega'_{ij}}{2\k_{ij}}\left(-\frac{\k_{ij}}{\rho} -t_{ij}(\k_{ij} - \frac{\sigma}{\rho})\right)\\
+\frac{\partial\tilde{Q}}{\partial\rho} &= 
+ \sum_{i>j>0}\frac{\omega'_{ij}}{2\k_{ij}}\left(-\frac{\k_{ij}}{\rho} -t_{ij}(\k_{ij} - \frac{\sigma}{\rho})\right)\\
 &= -\frac{1}{2\rho}\sum_{i>j>0}\omega'_{ij}\left(1 + t_{ij}(\rho - \frac{\sigma}{\k_{ij}})\right).
 \end{split}
 \end{equation}
-    
+
+We can now solve for $\lambda_0$, $\sigma$, and $\rho$.  However, we
+need to enforce an obvious constraint, namely that
+the total number of expected arrivals at time $t_N$ equals the
+actual number, which is just $N$:
+$$
+\sum_{j=0}^{N-1}\k_{Nj} = N.\quad\text{Put}\quad
+S = N - \sum_{j=0}^{N-1}\k_{Nj},
+$$
+then we solve the constrained maximization problem using a lagrange multiplier $\nu$ just as we did above.  Define
+$$
+W'_0 := \sum_{i=1}^N\omega'_{i0},\quad\text{and}\quad W'_1 :=
+\sum_{i>j>0}\omega'_{ij}.
+$$
+Then we get the following three equations:
+
+\begin{equation}\label{eq1}
+  \begin{split}
+    0 &= \frac{\partial\tilde{Q}}{\partial\lambda_0} + \nu\frac{\partial{S}}{\partial\lambda_0} \\
+    &=  \frac{1}{2\lambda_0}\sum_{i=1}^N\omega'_{i0} - {\nu}t_{N0}\quad\text{whence}\\
+    \lambda_0 &= 2\nu\frac{t_{N0}}{\sum_{i=1}^N\omega'_{i0}},
+  \end{split}
+\end{equation}
+
+\begin{equation}\label{eq2}
+  \begin{split}
+    0 &= \frac{\partial\tilde{Q}}{\partial\sigma} + \nu\frac{\partial{S}}{\partial\lambda_0} \\
+    &= \frac{1}{2\sigma}\sum_{i>j>0}\omega'_{ij}-
+    \nu\sum_{j=0}^{N-1}\k_{ij}\quad\text{whence} \\
+    \sigma &= 2\nu\frac{\sum_{j=0}^{N-1}\k_{ij}}{\sum_{i>j>0}\omega'_{ij}}.
+  \end{split}
+\end{equation}
+
+
+
+
 %\section{Numerical Results}
 \end{document}
 
@@ -448,38 +505,6 @@ Then for $j\in J(m)$ we get
 \end{align*}
 
 
-We can now solve for $\k_{ij}$.  We will enforce a constraint, namely that
-the total number of expected arrivals at time $t_l$ equals the actual number, which is just $l$:
-$$
-\sum_{m=0}^{l-1}\k_{lm} = l.
-$$
-Put
-$$
-\Sigma_l:= l - \sum_{m=0}^{l-1}\k_{lm} \quad(1\le l \le N).
-$$
-Note that
-$$
-\frac{\partial\Sigma_l}{\partial\k_{ij}} = \delta_{li}\begin{cases}
-  -1 & \text{if $j < i$ } \\
-  0 & \text{if $j \ge i$}.
-\end{cases}
-$$
-Once again, we enforce the constraints $\Sigma_l = 0$  using lagrange multipliers $\nu_l$ for $(1\le l\le N)$.
-Then for $ j < i$, we have
-\begin{equation}
-  \begin{split}
-    0 &= \frac{\partial\tilde{Q}}{\partial\k_{ij}} + \sum_{l=1}^N\nu_l\frac{\partial\Sigma_l}{\partial\k_{ij}} \\
-    &= \frac{\omega'_{ij}}{2\k_{ij}} - \nu_i,\quad\text{whence}\\
-    2\k_{ij}  &= \omega'_{ij}\nu_i^{-1},\\
-    2\sum_{j=0}^{i-1}\k_{ij} &= \nu_i^{-1}\sum_{j=0}^{i-1}\omega'_{ij},\\
-    \nu_i &= \frac{1}{2i}\sum_{j=0}^{i-1}\omega'_{ij},\\
-  \end{split}
-\end{equation}
-However, by definition (see \eqref{omega'_ij}) we have
-$$
-\sum_{j=0}^{i-1}\omega'_{ij} = 1\quad\text{for all $i,j$},
-$$
-so therefore we get
 \begin{equation}\label{k_hat:1}
   \k_{ij} = i\omega'_{ij}.
 \end{equation}
