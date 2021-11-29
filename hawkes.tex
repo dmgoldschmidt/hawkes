@@ -455,6 +455,14 @@ And finally, we have
 \end{split}
 \end{equation}
 
+Note that by definition,
+$$
+\sum_{j=0}^{N-1}\omega'_{ij} = 1\quad\text{for all } i,
+$$
+and therefore
+\begin{equation}\label{W0+W1}
+  W'_0 + W'_1 = N
+\end{equation}
 We can now solve for $\lambda_0$, $\sigma$, and $\rho$.  However, we
 need to enforce an obvious constraint, namely that
 the total number of expected arrivals at time $t_N$ equals the
@@ -463,32 +471,64 @@ $$
 \sum_{j=0}^{N-1}\k_{Nj} = N.\quad\text{Put}\quad
 S = N - \sum_{j=0}^{N-1}\k_{Nj},
 $$
-then we solve the constrained maximization problem using a lagrange multiplier $\nu$ just as we did above.  Define
-$$
-W'_0 := \sum_{i=1}^N\omega'_{i0},\quad\text{and}\quad W'_1 :=
-\sum_{i>j>0}\omega'_{ij}.
-$$
-Then we get the following three equations:
-
+then we solve the constrained maximization problem using a lagrange multiplier $\nu$ just as we did above. Our first two constrained maximization equations are
 \begin{equation}\label{eq1}
   \begin{split}
     0 &= \frac{\partial\tilde{Q}}{\partial\lambda_0} + \nu\frac{\partial{S}}{\partial\lambda_0} \\
-    &=  \frac{1}{2\lambda_0}\sum_{i=1}^N\omega'_{i0} - {\nu}t_{N0}\quad\text{whence}\\
-    \lambda_0 &= 2\nu\frac{t_{N0}}{\sum_{i=1}^N\omega'_{i0}},
+    &=  \frac{W'_0}{2\lambda_0} - {\nu}t_{N0},\quad\text{whence}\\
+    \lambda_0 &= \frac{W'_0}{2\nu{t_{n0}}}.
   \end{split}
 \end{equation}
-
+and
 \begin{equation}\label{eq2}
   \begin{split}
-    0 &= \frac{\partial\tilde{Q}}{\partial\sigma} + \nu\frac{\partial{S}}{\partial\lambda_0} \\
-    &= \frac{1}{2\sigma}\sum_{i>j>0}\omega'_{ij}-
-    \nu\sum_{j=0}^{N-1}\k_{ij}\quad\text{whence} \\
-    \sigma &= 2\nu\frac{\sum_{j=0}^{N-1}\k_{ij}}{\sum_{i>j>0}\omega'_{ij}}.
+    0 &= \frac{\partial\tilde{Q}}{\partial\sigma} + \nu\frac{\partial{S}}{\partial\sigma} \\
+    &= \frac{W'_1}{2\sigma}-
+    \frac{\nu}{\sigma}\sum_{j=1}^{N-1}\k_{Nj}.
   \end{split}
 \end{equation}
 
+Applying the constraint equation, we get
+\begin{align*}
+      \frac{\nu}{\sigma}(N-\k_{0N}) &= \frac{W'_1}{2\sigma},\\
+      \nu(N-\k_{0N}) &= \frac{W'_1}{2}.
+  \end{align*}
 
+However, since $\k_{N0} = \lambda_0t_{N0}$, we can substitute
+from \eqref{eq1} into \eqref{eq2} and use \eqref{W0+W1}
+to obtain the value of $\nu$:
 
+\begin{equation}\label{nu}
+  \begin{split}
+N\nu - \frac{W'_0}{2} &= \frac{W'_1}{2},\\ 
+\nu &= \frac{W'_0+W'_1}{2N} = \frac{1}{2}.
+  \end{split}
+\end{equation}
+Then \eqref{eq1} simplifies to
+\begin{equation} \label{lambda0:1}
+    \lambda_0 = \frac{W_0'}{t_{N0}}.
+\end{equation}
+
+Substituting $\nu =1/2$, our third and final constrained maximization equation is
+\begin{equation}\label{eq3}
+  \begin{split}
+  0 &= \frac{\partial\tilde{Q}}{\partial\rho} + \frac{1}{2}\frac{\partial{S}}{\partial\rho} \\
+  &= -\frac{1}{2\rho}\sum_{i>j>0}\omega'_{ij}\left(1 + t_{ij}(\rho - \frac{\sigma}{\k_{ij}})\right) -\frac{1}{2}\sum_{j=1}^{N-1}\left(-\frac{\k_{Nj}}{\rho} -t_{Nj}(\k_{Nj} - \frac{\sigma}{\rho})\right)
+  \end{split}
+\end{equation}
+
+We now have two non-linear equations in the two unknowns $\sigma$ and $\rho$: the constraint equation and \eqref{eq3}.  However, it is easy to solve
+the constraint equation for $\sigma$ in terms of $\rho$ and other
+known quantities::
+\begin{equation}\label{eq4}
+  \begin{split}
+    N &=\k_{N0} + \sigma\sum_{j=1}^{N-1}\frac{1}{\rho}(1-e^{-t_{Nj}\rho})\\
+    \sigma &= (N - \lambda_0t_{N0})\left(\sum_{j=1}^{N-1}\frac{1}{\rho}(1-e^{-t_{Nj}\rho})\right)^{-1}.
+  \end{split}
+\end{equation}
+
+We can then substitute this into \eqref{eq3} and solve numerically
+for $\rho$ (and then of course back substitute into \eqref{eq4} to get $\sigma$).
 
 %\section{Numerical Results}
 \end{document}
