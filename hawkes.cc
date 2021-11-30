@@ -15,79 +15,75 @@
 bool dump_flag(false);
 bool verbose(false);
 
-struct Grad{ // subclass this for callback gradient evaluation
-  virtual ColVector<double>& Grad::operator()(double& ColVector<double>x) = 0;
-}
-
-struct Adam {
-  double alpha; // stepsize
-  int dim; // dimension
-  double beta1; // decay rate for mean1 
-  double beta2; // decay rate for mean2
-  double eps; // error tolerance
-  Grad& grad; // gradient functor
-  ColVector<double> m_t;
-  ColVector<double> v_t;
-  ColVector<double> delta;
-  ColVector<double> g; // gradient at step t
-  double t;
-  int max_iters;
-
-  Adam(Grad& g, int d, int m = 10, double a = .001, double b1 = .9 ,double b2 = .999, double e = .10e-8) :
-    grad(g), dim(d), max_iters(m), alpha(a), beta1(b1), beta2(b2), t(1), m_t(d), v_t(d), delta(d) {}
-
-  void operator()(ColVector<double>& theta){
-    assert(theta.nrows() == dim);
-    double b1 = beta1; // re-initialize the betas
-    double b2 = beta2;
-    m_t.fill(0);
-    v_t.fill(0);
-    double err = eps + 1;
-    int niters = 0;
-    
-    while(err > eps && niters < max_iters){
-      g = grad(theta);
-      assert(g.nrows() == dim);
-      m_t = (m_t*beta1 + g*(1-beta1))/(1-b1);
-      for(int i = 0;i < dim;i++) g[i] = g[i]*g[i];
-      v_t = (v_t*beta2 + g*(1-beta2))/(1-b2);
-      for(int i = 0;i < dim;i++) delta[i] = alpha*m_t[i]/(sqrt(v_t[i])+eps);
-      theta += delta;
-      b1 *= beta1;
-      b2 *= beta2;
-      err = 0;
-      for(int i = 0;i < dim;i++) err += delta[i]*delta[i];
-      err = sqrt(err);
-      niters++;
-    }
-  }
-};
         
-struct HawkesGrad : public Grad {
-  ColVector<double> grad;
-  Matrix<double>& omega1;
-  int N;
-  int c;
-  HawkesGrad(Matrix<double>& om) : omega1(om), N(om.nrows()), c(om.ncols()), grad(3) {}
+// struct HawkesGrad : public Grad {
+//   ColVector<double> grad;
+//   Matrix<double>& omega1;
+//   int N;
+//   int c;
+//   HawkesGrad(Matrix<double>& om) : omega1(om), N(om.nrows()), c(om.ncols()), grad(3) {}
 
-  ColVector& operator()(ColVector& theta){
+//   ColVector& operator()(ColVector& theta){
+//     double sum = 0;
+//     for(int i = 0;i < N;i++)sum += omega1(i,0);
+//     grad[0] = sum/(2*theta[0]); // dQ_dlambda
+//     sum = sum1 = 0;
+//     for(int j = 1;j < c;j++){
+//       for(int i = j+1;i < N;i++){
+//         sum += omega1(i,j);
+//         sum1 += (t[i]-t[j])*(theta[2] - theta[1]/k_hat_0(i,j)
+//     }
+//     grad[1] = sum/(2*theta[1]); // dQ_dsigma
+//     sum1 = 0;
+    
+
+
+// };
+
+struct SigmaRho{
+  Matrix<double>& omega1; // inputs
+  Array<double>& t;
+  double lambda_0;
+  
+  double& rho; // initial values and outputs
+  double& sigma;
+  
+  Matrix<double> k_hat; // we don't thrash dynamic memory
+  int N;  
+  SigmaRho(Matrix<double>& om, Array<double>& tt, double l,
+           double r, double s) :
+    omega1(om), k_hat(om.nrows(), om.ncols()),
+    lambda_0(l), t(tt), rho(r), sigma(s), N(om.nrows() {}
+
+  void sigma_comp(void){
     double sum = 0;
-    for(int i = 0;i < N;i++)sum += omega1(i,0);
-    grad[0] = sum/(2*theta[0]); // dQ_dlambda
-    sum = sum1 = 0;
-    for(int j = 1;j < c;j++){
-      for(int i = j+1;i < N;i++){
-        sum += omega1(i,j);
-        sum1 += (t[i]-t[j])*(theta[2] - theta[1]/k_hat_0(i,j)
+    for(int j = 1;j < N;j++)sum += (1-exp(rho*(t[N-1]-t[j])));
+    sigma = (N-lambda_0*t[0])*rho/sum;
+  }  
+
+  double y(double r){ // compute objective 
+    double Q = 0;
+    double S = 0;
+    for(int i = 1;i <= N;i++){
+      for(int j = 1;j < i;j++){
+        double k_hat = sigma*(1-exp(-r*(t[i]-t[j])));
+        double x = 1+(t[i]-t[j])*(r-sigma/k_hat);
+        Q += omega1(i,j)*x;
+        if(i == N) S += k_hat*x; 
+      }
     }
-    grad[1] = sum/(2*theta[1]); // dQ_dsigma
-    sum1 = 0;
-    
-    
-
-};
+    return(S-Q);
+  };
 
 
+  void solve(int max_iters, double eps){
+    int niters = 0;
+    double err = 1;
+    double r_min = y(0);
+    double r_max = y(1);
+    while(niters < max_iters && err > eps){
+      sigma_comp();
+        
 struct HawkesPoint{
   string mark;
   double time;

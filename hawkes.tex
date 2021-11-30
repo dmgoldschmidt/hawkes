@@ -140,10 +140,16 @@ to be solved for which will maximize $\tilde{Q}$.
 
 \section{The Homogeneous Poisson Process}
 For our purposes, a poisson process of rate $\lambda$ will be defined as an increasing sequence of random variables
-$ \{0 < T_1 < T_2 < \dots\}$ defined on $(0,\infty)$ such that $\{\tau_i = T_i-T_{i-1}~|~ i = 1,2,\dots\}$ are i.i.d.
+$ \{T_0 < T_1 < T_2 < \dots < T_N\}$ defined on $(0,\infty)$ such that $\{\tau_i = T_i-T_{i-1}~|~ i = 1,2,\dots N\}$ are i.i.d.
 exponential of rate $\lambda$. We often think of $T_i$ as the time of occurence of the $i^{th}$
 event, where often the event is the arrival of something.  So in the following, we will call the $T_i$
 ``arrival times'' and the $\tau_i$ ``inter-arrival times''.  
+It is convenient to make an affine change of variable for time,
+namely
+$$
+t = \frac{t-T_0}{T_N},
+$$
+so that $t_0 = 0$ and $t_N = 1$.
 
 The quantity of interest here is $Pd(T_n = t)$, the probability density that the $n^{th}$ arrival occurs at time $t$.
 \begin{Thm}
@@ -166,7 +172,7 @@ The quantity of interest here is $Pd(T_n = t)$, the probability density that the
 \end{Thm}
 The probability density \eqref{gamma_dist} is known as the gamma density in the literature.
 
-Now define $\eta(t)$ to be the ``counting function'' which is the total number of arrivals up to time $t$. $\eta(t)$
+Now define $\eta(t)$ to be the ``counting function'' which is the total number of arrivals up to, and including, time $t$. $\eta(t)$
 is an integer-valued random variable defined on $(0,\infty)$.
 \begin{Cor}
   For a Poisson process of rate $\lambda$ as in the theorem, 
@@ -180,7 +186,7 @@ is an integer-valued random variable defined on $(0,\infty)$.
     $$
     Now for $n > 0$, we have
     \begin{align*}
-      Pr(\eta(t) = n) &= \int_0^tPd(T_n = s \& \eta(t-s) = 0)ds\
+      Pr(\eta(t) = n) &= \int_0^tPd(T_n = s ~\&~ \eta(t-s) = 0)ds\
       &= \int_0^t\frac{\lambda^ns^{n-1}}{(n-1)!}e^{-\lambda{s}}e^{-\lambda(t-s)}ds\\
       &=\frac{\lambda^n}{(n-1)!}e^{-\lambda{t}}\int_0^t s^{n-1}ds\\
       &= \frac{\lambda^nt^{n}}{n!}e^{-\lambda{t}}.
@@ -513,18 +519,20 @@ Substituting $\nu =1/2$, our third and final constrained maximization equation i
 \begin{equation}\label{eq3}
   \begin{split}
   0 &= \frac{\partial\tilde{Q}}{\partial\rho} + \frac{1}{2}\frac{\partial{S}}{\partial\rho} \\
-  &= -\frac{1}{2\rho}\sum_{i>j>0}\omega'_{ij}\left(1 + t_{ij}(\rho - \frac{\sigma}{\k_{ij}})\right) -\frac{1}{2}\sum_{j=1}^{N-1}\left(-\frac{\k_{Nj}}{\rho} -t_{Nj}(\k_{Nj} - \frac{\sigma}{\rho})\right)
+  &= -\frac{1}{2\rho}\sum_{i>j>0}\omega'_{ij}\left(1 + t_{ij}(\rho - \frac{\sigma}{\k_{ij}})\right) -\frac{1}{2}\sum_{j=1}^{N-1}\left(-\frac{\k_{Nj}}{\rho} -t_{Nj}(\k_{Nj} - \frac{\sigma}{\rho})\right)\\
+  &= -\sum_{i>j>0}\omega'_{ij}\left(1 + t_{ij}(\rho - \frac{\sigma}{\k_{ij}})\right) +\sum_{j=1}^{N-1}\k_{Nj}\left(1 + t_{Nj}(\rho - \frac{\sigma}{\k_{Nj}})\right)
   \end{split}
 \end{equation}
 
 We now have two non-linear equations in the two unknowns $\sigma$ and $\rho$: the constraint equation and \eqref{eq3}.  However, it is easy to solve
-the constraint equation for $\sigma$ in terms of $\rho$ and other
-known quantities::
+the constraint equation 
+$$
+N =\k_{N0} + \sigma\sum_{j=1}^{N-1}\frac{1}{\rho}(1-e^{-t_{Nj}\rho})\\
+$$
+for $\sigma$ in terms of $\rho$ and other
+known quantities:
 \begin{equation}\label{eq4}
-  \begin{split}
-    N &=\k_{N0} + \sigma\sum_{j=1}^{N-1}\frac{1}{\rho}(1-e^{-t_{Nj}\rho})\\
-    \sigma &= (N - \lambda_0t_{N0})\left(\sum_{j=1}^{N-1}\frac{1}{\rho}(1-e^{-t_{Nj}\rho})\right)^{-1}.
-  \end{split}
+  \sigma = (N - \lambda_0t_{N0})\left(\sum_{j=1}^{N-1}\frac{1}{\rho}(1-e^{-t_{Nj}\rho})\right)^{-1}.
 \end{equation}
 
 We can then substitute this into \eqref{eq3} and solve numerically
