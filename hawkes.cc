@@ -16,30 +16,6 @@ bool dump_flag(false);
 bool verbose(false);
 
         
-// struct HawkesGrad : public Grad {
-//   ColVector<double> grad;
-//   Matrix<double>& omega1;
-//   int N;
-//   int c;
-//   HawkesGrad(Matrix<double>& om) : omega1(om), N(om.nrows()), c(om.ncols()), grad(3) {}
-
-//   ColVector& operator()(ColVector& theta){
-//     double sum = 0;
-//     for(int i = 0;i < N;i++)sum += omega1(i,0);
-//     grad[0] = sum/(2*theta[0]); // dQ_dlambda
-//     sum = sum1 = 0;
-//     for(int j = 1;j < c;j++){
-//       for(int i = j+1;i < N;i++){
-//         sum += omega1(i,j);
-//         sum1 += (t[i]-t[j])*(theta[2] - theta[1]/k_hat_0(i,j)
-//     }
-//     grad[1] = sum/(2*theta[1]); // dQ_dsigma
-//     sum1 = 0;
-    
-
-
-// };
-
 struct SigmaRho{
   Matrix<double>& omega1; // inputs
   Array<double>& t;
@@ -49,21 +25,24 @@ struct SigmaRho{
   double& sigma;
   
   Matrix<double> k_hat; // we don't thrash dynamic memory
-  int N;  
+  int N;
+  
   SigmaRho(Matrix<double>& om, Array<double>& tt, double l,
            double r, double s) :
-    omega1(om), k_hat(om.nrows(), om.ncols()),
-    lambda_0(l), t(tt), rho(r), sigma(s), N(om.nrows() {}
+   omega1(om), lambda_0(l), t(tt), rho(r), sigma(s), N(om.nrows()) {
+    k_hat.reset(om.nrows(),om.ncols());
+  }
 
-  void sigma_comp(void){
+  double sigma_comp(double r){
     double sum = 0;
-    for(int j = 1;j < N;j++)sum += (1-exp(rho*(t[N-1]-t[j])));
-    sigma = (N-lambda_0*t[0])*rho/sum;
+    for(int j = 1;j < N;j++)sum += 1-exp(r*(t[N]-t[j]));
+    return (N-lambda_0*t[N])*rho/sum;
   }  
 
   double y(double r){ // compute objective 
     double Q = 0;
     double S = 0;
+    double s = sigma_comp(r);
     for(int i = 1;i <= N;i++){
       for(int j = 1;j < i;j++){
         double k_hat = sigma*(1-exp(-r*(t[i]-t[j])));
@@ -73,21 +52,53 @@ struct SigmaRho{
       }
     }
     return(S-Q);
-  };
-
+  }
 
   void solve(int max_iters, double eps){
     int niters = 0;
-    double err = 1;
-    double r_min = y(0);
-    double r_max = y(1);
-    while(niters < max_iters && err > eps){
-      sigma_comp();
+    double y_min = y(0);
+    double y_max = y(1);
+    double r_min = 0;
+    double r_max = 1;
+    double new_r, new_y;
+    while(niters++ < max_iters && y_min*y_max > 0){
+      r_max *= 2;
+      y_max = y(r_max);
+    }
+    if(y_min*y_max > 0){
+      cerr << "failed to find r_max after "<<niters<<" iterations."<<endl;
+      exit(1);
+    }
+    else cout << "rmax = "<<r_max<<", y_max = "<<y_max<<endl;
         
+    niters = 0;
+    while(niters++ < max_iters && fabs(y_min-y_max) > eps){
+      new_r = (r_min+r_max)/2;
+      new_y = y(new_r);
+      if(y_min*new_y > 0) {
+        y_min = new_y;
+        r_min = new_r;
+      }
+      else{
+        y_max = new_y;
+        r_max = new_r;
+      }
+    }
+    if(niters >= max_iters){
+      cerr << "SigmaRho.solve did not converge after "<<niters<<
+        " iterations with error = "<<fabs(y_min-y_max)<<endl;
+      exit(1);
+    }
+    rho = new_r;
+    sigma = sigma_comp(rho);
+  }
+};
+
 struct HawkesPoint{
   string mark;
   double time;
 };
+
 ostream& operator<<(ostream& os, const HawkesPoint& h){
   os << format("mark: %s time: %f\n",h.mark.c_str(),time);
   return os;
@@ -102,14 +113,13 @@ struct Mark{
 
   Mark(void) : name(""),rho(0),sigma(0),nkids(0),kids(10) {}
 };
+
 ostream& operator<<(ostream& os, const Mark& m){
   os << format("%s: rho: %f sigma:%f children: ",m.name.c_str(),m.rho,m.sigma);
   for(int i = 0;i <m.nkids;i++)os << m.kids[i] <<", ";
   os <<endl;
   return os;
 }
-
-  
  
 int main(int argc, char** argv){
 
