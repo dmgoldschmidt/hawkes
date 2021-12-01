@@ -15,44 +15,54 @@
 bool dump_flag(false);
 bool verbose(false);
 
+struct HawkesPoint{
+  string mark;
+  double time;
+};
+
+ostream& operator<<(ostream& os, const HawkesPoint& h){
+  os << format("mark: %s time: %f\n",h.mark.c_str(),time);
+  return os;
+}
+
         
-struct SigmaRho{
-  Matrix<double>& omega1; // inputs
-  Array<double>& t;
-  double lambda_0;
+class SigmaRho{
+  const Matrix<double>& omega1; // inputs
+  const Array<HawkesPoint>& data;
+  double lambda;
   
   double& rho; // initial values and outputs
   double& sigma;
   
-  Matrix<double> k_hat; // we don't thrash dynamic memory
   int N;
   
-  SigmaRho(Matrix<double>& om, Array<double>& tt, double l,
-           double r, double s) :
-   omega1(om), lambda_0(l), t(tt), rho(r), sigma(s), N(om.nrows()) {
-    k_hat.reset(om.nrows(),om.ncols());
-  }
 
   double sigma_comp(double r){
     double sum = 0;
-    for(int j = 1;j < N;j++)sum += 1-exp(r*(t[N]-t[j]));
-    return (N-lambda_0*t[N])*rho/sum;
-  }  
+    for(int j = 1;j < N;j++)sum += 1-exp(-r*(1-t(j)));
+    return (N-lambda)*r/sum;
+  }
 
-  double y(double r){ // compute objective 
+  double t(int i){return data[i].time;}
+
+  double y(double r){ // compute -dQ_drho + dS_drho
     double Q = 0;
     double S = 0;
     double s = sigma_comp(r);
     for(int i = 1;i <= N;i++){
       for(int j = 1;j < i;j++){
-        double k_hat = sigma*(1-exp(-r*(t[i]-t[j])));
-        double x = 1+(t[i]-t[j])*(r-sigma/k_hat);
+        double k_hat = sigma*(1-exp(-r*(t(i)-t(j))));
+        double x = 1+(t(i)-t(j))*(r-sigma/k_hat);
         Q += omega1(i,j)*x;
         if(i == N) S += k_hat*x; 
       }
     }
     return(S-Q);
   }
+public:
+  SigmaRho(const Matrix<double>& om, const Array<HawkesPoint>& d,
+           double l, double& r, double& s) :
+    omega1(om),data(d),lambda(l),rho(r),sigma(s),N(om.nrows()) {}
 
   void solve(int max_iters, double eps){
     int niters = 0;
@@ -61,6 +71,8 @@ struct SigmaRho{
     double r_min = 0;
     double r_max = 1;
     double new_r, new_y;
+
+    //step1: find an r s.t. y_min & y_max have opp. sign
     while(niters++ < max_iters && y_min*y_max > 0){
       r_max *= 2;
       y_max = y(r_max);
@@ -94,15 +106,6 @@ struct SigmaRho{
   }
 };
 
-struct HawkesPoint{
-  string mark;
-  double time;
-};
-
-ostream& operator<<(ostream& os, const HawkesPoint& h){
-  os << format("mark: %s time: %f\n",h.mark.c_str(),time);
-  return os;
-}
 
 struct Mark{
   string name;
@@ -132,7 +135,10 @@ int main(int argc, char** argv){
   double rho_0 = 1;
   double lambda_0 = .1;
   int max_iters = 5;
-
+  int simulation = 1;
+  int sr_iters = 20;
+  int sr_err = 1.0e-8;
+  
   GetOpt cl(argc,argv); // parse command line
   cl.get("data_file",data_file); cout << "data file: "<<data_file<<endl;
   cl.get("model_output_file",model_output_file); cout << "model output to "<<model_output_file<<endl;
@@ -142,7 +148,9 @@ int main(int argc, char** argv){
   cl.get("rho_0",rho_0); cout << "rho_0: "<<rho_0<<endl;
   cl.get("lambda_0",lambda_0); cout << "lambda_0: "<<lambda_0<<endl;
   cl.get("max_iters",max_iters); cout << "max iterations: "<<max_iters<<endl;
-  
+  cl.get("simulation",simulation); cout << "simulation mode: "<<simulation<<endl;
+  cl.get("sr_iters",sr_iters);cout<<"sr_iters: "<<sr_iters<<endl;
+  cl.get("sr_err",sr_err); cout <<"sr_err: "<<sr_err<<endl;
   
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
   if(file_dir !=""){
@@ -164,6 +172,7 @@ int main(int argc, char** argv){
     cerr << "Can't open "<<data_file<<endl;
     exit(1);
   }
+
   int i = 0;
   while((awk.nf = awk.next()) != -1 && (ndata == 0?  true : i < ndata)){ // exit on EOF
     if(awk.nf != 2) continue;
@@ -191,22 +200,31 @@ int main(int argc, char** argv){
 
   Array<double> omega(N); // the overall probability of state j
   Matrix<double> omega1(N,N); // posterior prob of state j at time i
+  Matrix<double> k_hat_0(N,N); // prior "
+  
   //  Matrix<double> k_hat(N,N); // posterior expected # events in state j up to time i
-  // Matrix<double> k_hat_0(N,N); // prior "
   // ColVector<double> A_k(2);
   // Matrix<double> AtA(2,2); // normal matrix
   // ColVector<double> Atb(2);
   // ColVector<double> delta(2);
+
+  // set parameters to nominal
+  double rho = rho_0;
+  double sigma = sigma_0;
   double lambda = lambda_0;
   double sum = N*(N+1);
   for(int j = 0;j < N;j++) omega.fill((N - j)/sum);
   
   // begin EM iteration
+  SigmaRho sr(omega1,data,lambda,rho,sigma);
   int niters = 0;
   while(niters <= max_iters){
     // compute posterior probability matrix omega1
-    //    k_hat.fill(0.0);
-    // k_hat_0.fill(0.0);
+    k_hat_0.fill(0.0);
+    for(int i = 0;i < marks.nkeys();i++){ // set all the marks data
+      marks(i).sigma = sigma;
+      marks(i).rho = rho;
+    }
     omega1(0,0) /*= k_hat(0,0) = k_hat_0(0,0)*/ = 1.0;
     double log_likelihood = 0.0;
     double score = 0.0;
@@ -214,7 +232,7 @@ int main(int argc, char** argv){
       double t_i = data[i].time;
       double t_ij;
       double row_sum = 0.0;
-      int mode = 0;
+      int mode = 0; // max_j omega1(i,j)
       for(int j = 0; j < i;j++){
         double sigma = marks[data[i].mark].sigma;
         double rho = marks[data[i].mark].rho;
@@ -234,9 +252,9 @@ int main(int argc, char** argv){
       }
       log_likelihood += log(row_sum);
       for(int j = 0;j < N;j++) omega1(i,j) /= row_sum;
-      int truth = atoi(data[i].mark.c_str());
+      int truth = simulation? atoi(data[i].mark.c_str()) : -1;
       cout << format("i = %d: mode: process %d (%f) truth: process %d\n",i,mode,omega1(i,mode),truth);
-      if(i > 1)score += log(i*omega1(i,truth));
+      if(simulation)score += log(i*omega1(i,truth));
     }
     cout << "log likelihood at iteration "<<niters<<": "<<log_likelihood<<endl;
     cout << format("scoring rate: %f bits/obs\n",score/((N-1)*log(2)));
@@ -245,49 +263,52 @@ int main(int argc, char** argv){
       cout << "begin iteration "<<niters<<endl;
       for(int j = 0;j < N;j++){
         omega[j] = 0.0;
-        for(i = j;i < N;i++) omega[j] += omega1(i,j);
+        for(i = j+1;i <= N;i++) omega[j] += omega1(i,j);
         omega[j] /= N;
       }
-      lambda = 0.0;
-      for(i = 0;i < N;i++) lambda += omega1(i,0)/data[i].time;
-      lambda /= N;
+      lambda = omega[0]/data[N].time;//Note: t[N] = 1. This is for clarity
       cout << "update for lambda: "<<lambda<<endl;
 
       // now re-estimate rho and sigma using non-linear least squares
-      for(int m = 0;m < marks.nkeys();m++){
-        Mark mark = marks(m);
-        if(mark.nkids < 2) continue;
-        double& sigma = mark.sigma;
-        double& rho = mark.rho;
-        double rms_error = 0;
-        AtA.fill(0);
-        Atb.fill(0);
-        for(int k = 0; k < mark.nkids;k++){ // get the equations for this mark
-          int j = mark.kids[k]; // next child for this mark
-          for(int i = j+1;i < N;i++){ // loop over all subsequent events
-            double t_ij = data[i].time - data[j].time;
-            A_k[0] = k_hat_0(i,j)/sigma;
-            A_k[1] = t_ij*(sigma/rho - k_hat_0(i,j)) - k_hat_0(i,j)/rho;
-            double b = k_hat(i,j) - k_hat_0(i,j); // residual
-            AtA += A_k*A_k.Tr();
-            Atb[0] += A_k[0]*b; Atb[1] += A_k[1]*b;
-            rms_error += b*b;
-          }
-        }
-        Matrix<double> AtAinv = inv(AtA);
-        delta = AtAinv*Atb;
-        rms_error = sqrt(rms_error);
-        double f = .1*sigma/fabs(delta[0]); // bound changes to .1 of originals
-        if(f < 1) delta[0] *= f;
-        sigma += delta[0];
-        f = .1*rho/fabs(delta[1]);
-        if(f < 1) delta[1] *= f;
-        rho += delta[1];
-        cout << format("update for mark %s: sigma: %f rho: %f rms_error: %f\n",
-                       mark.name.c_str(),mark.sigma,mark.rho,rms_error);
-      } // on to the next mark
+      sr.solve(sr_iters,sr_err); // updates sigma and rho
+      cout << format("at iteration %d, sigma = %f, rho = %f",
+                     niters,sigma,rho);
     } // end re-estimation
     niters++;
   } // on to the next EM iteration
   // output results here
+  cout<<format("lambda: %f, sigma: %f, rho: %f\n",lambda,sigma,rho); 
 }  
+
+      // for(int m = 0;m < marks.nkeys();m++){
+      //   Mark mark = marks(m);
+      //   if(mark.nkids < 2) continue;
+      //   double& sigma = mark.sigma;
+      //   double& rho = mark.rho;
+      //   double rms_error = 0;
+      //   AtA.fill(0);
+      //   Atb.fill(0);
+      //   for(int k = 0; k < mark.nkids;k++){ // get the equations for this mark
+      //     int j = mark.kids[k]; // next child for this mark
+      //     for(int i = j+1;i < N;i++){ // loop over all subsequent events
+      //       double t_ij = data[i].time - data[j].time;
+      //       A_k[0] = k_hat_0(i,j)/sigma;
+      //       A_k[1] = t_ij*(sigma/rho - k_hat_0(i,j)) - k_hat_0(i,j)/rho;
+      //       double b = k_hat(i,j) - k_hat_0(i,j); // residual
+      //       AtA += A_k*A_k.Tr();
+      //       Atb[0] += A_k[0]*b; Atb[1] += A_k[1]*b;
+      //       rms_error += b*b;
+      //     }
+      //   }
+      //   Matrix<double> AtAinv = inv(AtA);
+      //   delta = AtAinv*Atb;
+      //   rms_error = sqrt(rms_error);
+      //   double f = .1*sigma/fabs(delta[0]); // bound changes to .1 of originals
+      //   if(f < 1) delta[0] *= f;
+      //   sigma += delta[0];
+      //   f = .1*rho/fabs(delta[1]);
+      //   if(f < 1) delta[1] *= f;
+      //   rho += delta[1];
+      //   cout << format("update for mark %s: sigma: %f rho: %f rms_error: %f\n",
+      //                  mark.name.c_str(),mark.sigma,mark.rho,rms_error);
+      // } // on to the next mark
