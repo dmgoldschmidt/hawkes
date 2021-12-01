@@ -178,29 +178,39 @@ int main(int argc, char** argv){
     data[i].time = atof(awk[2]);
     i++;
   }
-  ndata = i;
-  Array<double> omega(ndata);
-  Matrix<double> omega1(ndata,ndata); // posterior prob of state j at time i
-  Matrix<double> k_hat(ndata,ndata); // posterior expected # events in state j up to time i
-  Matrix<double> k_hat_0(ndata,ndata); // prior "
-  ColVector<double> A_k(2);
-  Matrix<double> AtA(2,2); // normal matrix
-  ColVector<double> Atb(2);
-  ColVector<double> delta(2);
+  int N = i-1; // t[0] is a reference time, not an event!
+  for(int i = 0;i <= N;i++) data[i].time = (data[i].time-data[0].time)/data[N].time; // normalize times to [0,1].
+
+
+  /* The base process starts at 0 and generates the first arrival
+   * at t[1], as well as others throughout the time interval [0,1]   * the total number of arrivals is N.  Each arrival generates
+   * a child process, which *may* generate one or more events (if
+   * it doesn't start too close to the end at  t=1.
+   */
+  
+
+  Array<double> omega(N); // the overall probability of state j
+  Matrix<double> omega1(N,N); // posterior prob of state j at time i
+  //  Matrix<double> k_hat(N,N); // posterior expected # events in state j up to time i
+  // Matrix<double> k_hat_0(N,N); // prior "
+  // ColVector<double> A_k(2);
+  // Matrix<double> AtA(2,2); // normal matrix
+  // ColVector<double> Atb(2);
+  // ColVector<double> delta(2);
   double lambda = lambda_0;
-  double sum = ndata*(ndata+1);
-  for(int i = 0;i < ndata;i++) omega.fill((ndata - i)/sum);
+  double sum = N*(N+1);
+  for(int j = 0;j < N;j++) omega.fill((N - j)/sum);
   
   // begin EM iteration
   int niters = 0;
   while(niters <= max_iters){
     // compute posterior probability matrix omega1
-    k_hat.fill(0.0);
-    k_hat_0.fill(0.0);
-    omega1(0,0) = k_hat(0,0) = k_hat_0(0,0) = 1.0;
+    //    k_hat.fill(0.0);
+    // k_hat_0.fill(0.0);
+    omega1(0,0) /*= k_hat(0,0) = k_hat_0(0,0)*/ = 1.0;
     double log_likelihood = 0.0;
     double score = 0.0;
-    for(int i = 1;i < ndata;i++){
+    for(int i = 1;i <= N;i++){
       double t_i = data[i].time;
       double t_ij;
       double row_sum = 0.0;
@@ -223,24 +233,24 @@ int main(int argc, char** argv){
         row_sum += omega1(i,j);
       }
       log_likelihood += log(row_sum);
-      for(int j = 0;j < ndata;j++) omega1(i,j) /= row_sum;
+      for(int j = 0;j < N;j++) omega1(i,j) /= row_sum;
       int truth = atoi(data[i].mark.c_str());
       cout << format("i = %d: mode: process %d (%f) truth: process %d\n",i,mode,omega1(i,mode),truth);
       if(i > 1)score += log(i*omega1(i,truth));
     }
     cout << "log likelihood at iteration "<<niters<<": "<<log_likelihood<<endl;
-    cout << format("scoring rate: %f bits/obs\n",score/((ndata-1)*log(2)));
+    cout << format("scoring rate: %f bits/obs\n",score/((N-1)*log(2)));
     if(niters < max_iters){
       // now we re-estimate the parameters
       cout << "begin iteration "<<niters<<endl;
-      for(int j = 0;j < ndata;j++){
+      for(int j = 0;j < N;j++){
         omega[j] = 0.0;
-        for(i = j;i < ndata;i++) omega[j] += omega1(i,j);
-        omega[j] /= ndata;
+        for(i = j;i < N;i++) omega[j] += omega1(i,j);
+        omega[j] /= N;
       }
       lambda = 0.0;
-      for(i = 0;i < ndata;i++) lambda += omega1(i,0)/data[i].time;
-      lambda /= ndata;
+      for(i = 0;i < N;i++) lambda += omega1(i,0)/data[i].time;
+      lambda /= N;
       cout << "update for lambda: "<<lambda<<endl;
 
       // now re-estimate rho and sigma using non-linear least squares
@@ -254,7 +264,7 @@ int main(int argc, char** argv){
         Atb.fill(0);
         for(int k = 0; k < mark.nkids;k++){ // get the equations for this mark
           int j = mark.kids[k]; // next child for this mark
-          for(int i = j+1;i < ndata;i++){ // loop over all subsequent events
+          for(int i = j+1;i < N;i++){ // loop over all subsequent events
             double t_ij = data[i].time - data[j].time;
             A_k[0] = k_hat_0(i,j)/sigma;
             A_k[1] = t_ij*(sigma/rho - k_hat_0(i,j)) - k_hat_0(i,j)/rho;
