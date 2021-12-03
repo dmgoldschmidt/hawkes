@@ -416,21 +416,29 @@ $$
 \frac{\sigma}{\rho}(1-e^{-\rho{t_{ij}}}) & \text{otherwise}.
 \end{cases}
 $$
-Taking partial derivatives, we have
+Moreover, it is clear that for $\rho{t_{ij}}$ large,
+$$
+\k_{ij} \approx \frac{\sigma}{\rho},
+$$
+while by expanding the exponential in a Taylor series about 0, we see that
+$$
+\lim_{\rho\rightarrow{0^+}}\k_{ij} = \sigma{t_{ij}}.
+$$
+
+Now taking partial derivatives, we have
 \begin{equation}\label{dk_dparams}
   \begin{split}
     \frac{\partial\k_{i0}}{\partial\lambda_0} &= 
-        t_{i0} \\
+        t_{i0} \quad\text{and for $j > 0$,}\\
     \frac{\partial\k_{ij}}{\partial\sigma} &= 
-      \frac{\k_{ij}}{\sigma} \quad\text{for $j > 0$, and} \\
+      \frac{\k_{ij}}{\sigma} \quad\text{and} \\
     \frac{\partial\k_{ij}}{\partial\rho} &=
-    \left(-\frac{\k_{ij}}{\rho} -t_{ij}(\k_{ij} - \frac{\sigma}{\rho})\right)\quad\text{for } j > 0.
+    \left(-\frac{\k_{ij}}{\rho} -t_{ij}(\k_{ij} - \frac{\sigma}{\rho})\right)\\
+    &= -\frac{\k_{ij}}{\rho}\left(1 + t_{ij}(\rho-\frac{\sigma}{\k_{ij}}\right) \\
+    &= -\frac{\k_{ij}}{\rho}\left(1 + \rho{t_{ij}}(1-\frac{1}{1-e^{-\rho{t_{ij}}}})\right)\\
+    &= -\frac{\k_{ij}}{\rho}\left(1 + \frac{\rho{t_{ij}}}{1-e^{\rho{t_{ij}}}})\right).\\
   \end{split}
 \end{equation}
-
-
-
-
 
 In particular, for $j = 0$,  \eqref{dQ_dk} and \eqref{dk_dparams} immediately imply
 \begin{equation}\label{dQ_dlambda}
@@ -456,8 +464,8 @@ And finally, we have
 \begin{equation}\label{dQ_drho}
 \begin{split}
 \frac{\partial\tilde{Q}}{\partial\rho} &= 
- \sum_{i>j>0}\frac{\omega'_{ij}}{2\k_{ij}}\left(-\frac{\k_{ij}}{\rho} -t_{ij}(\k_{ij} - \frac{\sigma}{\rho})\right)\\
-&= -\frac{1}{2\rho}\sum_{i>j>0}\omega'_{ij}\left(1 + t_{ij}(\rho - \frac{\sigma}{\k_{ij}})\right).
+\sum_{i>j>0}\frac{\omega'_{ij}}{2\k_{ij}}\left(-\frac{\k_{ij}}{\rho}(1 + \frac{\rho{t_{ij}}}{1-e^{\rho{t_{ij}}}})\right)\\
+&= -\frac{1}{2\rho}\sum_{i>j>0}\omega'_{ij}\left(1 + \frac{\rho{t_{ij}}}{1-e^{-\rho{t_{ij}}}})\right).
 \end{split}
 \end{equation}
 
@@ -473,9 +481,12 @@ We can now solve for $\lambda_0$, $\sigma$, and $\rho$.  However, we
 need to enforce an obvious constraint, namely that
 the total number of expected arrivals at time $t_N$ equals the
 actual number, which is just $N$:
+\begin{equation}\label{constraint}
+  \sum_{j=0}^{N-1}\k_{Nj} = N.
+\end{equation}
+Define
 $$
-\sum_{j=0}^{N-1}\k_{Nj} = N.\quad\text{Put}\quad
-S = N - \sum_{j=0}^{N-1}\k_{Nj},
+S := N - \sum_{j=0}^{N-1}\k_{Nj},
 $$
 then we solve the constrained maximization problem using a lagrange multiplier $\nu$ just as we did above. Our first two constrained maximization equations are
 \begin{equation}\label{eq1}
@@ -494,7 +505,7 @@ and
   \end{split}
 \end{equation}
 
-Applying the constraint equation, we get
+Applying the constraint equation \eqref{constraint}, we get
 \begin{align*}
       \frac{\nu}{\sigma}(N-\k_{0N}) &= \frac{W'_1}{2\sigma},\\
       \nu(N-\k_{0N}) &= \frac{W'_1}{2}.
@@ -516,23 +527,20 @@ Then \eqref{eq1} simplifies to
 \end{equation}
 
 Substituting $\nu =1/2$, our third and final constrained maximization equation is
-\begin{equation}\label{eq3}
-  \begin{split}
+\begin{align*}
   0 &= \frac{\partial\tilde{Q}}{\partial\rho} + \frac{1}{2}\frac{\partial{S}}{\partial\rho} \\
-  &= -\frac{1}{2\rho}\sum_{i>j>0}\omega'_{ij}\left(1 + t_{ij}(\rho - \frac{\sigma}{\k_{ij}})\right) -\frac{1}{2}\sum_{j=1}^{N-1}\left(-\frac{\k_{Nj}}{\rho} -t_{Nj}(\k_{Nj} - \frac{\sigma}{\rho})\right)\\
-  &= -\sum_{i>j>0}\omega'_{ij}\left(1 + t_{ij}(\rho - \frac{\sigma}{\k_{ij}})\right) +\sum_{j=1}^{N-1}\k_{Nj}\left(1 + t_{Nj}(\rho - \frac{\sigma}{\k_{Nj}})\right)
-  \end{split}
+  &= -\frac{1}{2\rho}\sum_{i>j>0}\omega'_{ij}\left(1 + \frac{\rho{t_{ij}}}{(1 - e^{\rho{t_{ij}}}})\right) +\frac{1}{2\rho}\sum_{j=1}^{N-1}\k_{Nj}\left(1+ \frac{\rho{t_{Nj}}}{1 - e^{\rho{t_{Nj}}}}\right).
+\end{align*}
+It follows that
+\begin{equation}\label{eq3}
+  0 = -\sum_{i>j>0}\omega'_{ij}\left(1 + \frac{\rho{t_{ij}}}{1-e^{\rho{t_{ij}}}})\right)
+      +\sum_{j=1}^{N-1}\k_{Nj}\left(1+ \frac{\rho{t_{Nj}}}{1 - e^{\rho{t_{Nj}}}}\right).
 \end{equation}
 
-We now have two non-linear equations in the two unknowns $\sigma$ and $\rho$: the constraint equation and \eqref{eq3}.  However, it is easy to solve
-the constraint equation 
-$$
-N =\k_{N0} + \sigma\sum_{j=1}^{N-1}\frac{1}{\rho}(1-e^{-t_{Nj}\rho})\\
-$$
-for $\sigma$ in terms of $\rho$ and other
-known quantities:
+Note that it is easy to solve \eqref{constraint} for $\sigma$ as a function of $rho$ (and other
+known quantities):
 \begin{equation}\label{eq4}
-  \sigma = \rho(N - \lambda_0t_{N0})\left(\sum_{j=1}^{N-1}1-e^{-t_{Nj}\rho}\right)^{-1}.
+  \sigma(\rho) = \frac{N - \lambda_0t_{N0}}{\sum_{j=1}^{N-1}\frac{1-e^{-t_{Nj}\rho}}{\rho}}.
 \end{equation}
 
 We can then substitute this into \eqref{eq3} and solve numerically

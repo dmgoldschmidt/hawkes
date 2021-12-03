@@ -38,6 +38,7 @@ class SigmaRho{
   
 
   double sigma_comp(double r){
+    if(r == 0) return 0;
     double sum = 0;
     for(int j = 1;j < N;j++)sum += 1-exp(-r*(1-t(j)));
     return (N-lambda)*r/sum;
@@ -51,8 +52,8 @@ class SigmaRho{
     double s = sigma_comp(r);
     for(int i = 1;i <= N;i++){
       for(int j = 1;j < i;j++){
-        double k_hat = sigma*(1-exp(-r*(t(i)-t(j))));
-        double x = 1+(t(i)-t(j))*(r-sigma/k_hat);
+        double k_hat = s*(1-exp(-r*(t(i)-t(j))));
+        double x = 1+(t(i)-t(j))*(r-s/k_hat);
         Q += omega1(i,j)*x;
         if(i == N) S += k_hat*x; 
       }
@@ -199,8 +200,8 @@ int main(int argc, char** argv){
   
 
   Array<double> omega(N); // the overall probability of state j
-  Matrix<double> omega1(N,N); // posterior prob of state j at time i
-  Matrix<double> k_hat_0(N,N); // prior "
+  Matrix<double> omega1(N+1,N); // posterior prob of state j at time i
+  Matrix<double> k_hat_0(N+1,N); // prior "
   
   //  Matrix<double> k_hat(N,N); // posterior expected # events in state j up to time i
   // ColVector<double> A_k(2);
