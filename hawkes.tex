@@ -138,59 +138,23 @@ maximized is
 where, as above, $\omega'$ denotes the prior value, while $\omega$ and $\eta$ are the unknown parameters
 to be solved for which will maximize $\tilde{Q}$.
 
-\section{Nonlinear Least Squares}\label{NLS}
-Here we are given $m$ non-linear equations $\{f_i(X) = y_i\}$ in $n$ unknowns $X = (x_1,\dots,x_n)$,
-together with an initial guess $\hat{X}$ for $X$.  We assume that the functions $f_(X)$ are differentiable
-and that $m \ge n$. Typically, we in fact have $m >> n$.  We would like to ``solve'' the system by minimizing
-the sum of squares of the residuals
-$$
-S := \sum_{i=1}^m (f_i(X)-y_i)^2.
-$$
-This can be achieved using any one of a number of gradient descent methods, but we will outline here a
-simple approach which generalizes Newton's method.
-
-We first compute
-$$
-a_{ij} := \frac{\partial{f_i}}{\partial{x_j}}(\hat{X}),\quad\text{and}\quad b_i := y_i - f_i(\hat{X}).
-$$
-We then apply the first-order Taylor approximation of $f_i$ about  $X = \hat{X}$  
-\begin{equation} \label{Taylor}
-f_i(X) \approx f_i(\hat{X}) + \sum_{j=1}^na_{ij}(X - \hat{X}).
-\end{equation}
-obtaining an overdetermined linear system $A(X-\hat{X}) = b$, 
-where
-$$
-A := [a_{ij}]\quad\text{and}\quad b := [b_i].
-$$
-This system has the least-squares solution
-$$
-X = \hat{X} + (A^tA)^{-1}A^tb.
-$$
-
-We can then replace our initial guess $\hat{X}$ by $X$, and iterate this procedure as required.
-Note that when $m = n$ there is no need to use least squares and the algorithm reduces to Newton's method.
-
-The success of this algorithm depends on two things:
-\begin{enumerate}
-\item The non-singularity of the normal matrix $A^tA$,
-\item The strength of the approximation \eqref{Taylor}.
-\end{enumerate}
-If the normal matrix is (near) singular, we can set one or more variables to zero and solve for the remaining
-variables.  In the second case, we observe that the algorithm does not converge.  This is usually because the
-correction $\Delta{X} = X-\hat{X}$ is too large. A possible solution is to scale $\Delta{X}$ by a fraction
-$\lambda < 1$.  
-
 \section{The Homogeneous Poisson Process}
 For our purposes, a poisson process of rate $\lambda$ will be defined as an increasing sequence of random variables
-$ \{0 < T_1 < T_2 < \dots\}$ defined on $(0,\infty)$ such that $\{\tau_i = T_i-T_{i-1}~|~ i = 1,2,\dots\}$ are i.i.d.
+$ \{T_0 < T_1 < T_2 < \dots < T_N\}$ defined on $(0,\infty)$ such that $\{\tau_i = T_i-T_{i-1}~|~ i = 1,2,\dots N\}$ are i.i.d.
 exponential of rate $\lambda$. We often think of $T_i$ as the time of occurence of the $i^{th}$
 event, where often the event is the arrival of something.  So in the following, we will call the $T_i$
 ``arrival times'' and the $\tau_i$ ``inter-arrival times''.  
+It is convenient to make an affine change of variable for time,
+namely
+$$
+t = \frac{t-T_0}{T_N},
+$$
+so that $t_0 = 0$ and $t_N = 1$.
 
 The quantity of interest here is $Pd(T_n = t)$, the probability density that the $n^{th}$ arrival occurs at time $t$.
 \begin{Thm}
   Let $\{0 < T_1<\dots<T_n<... \}$ be a Poisson process of rate $\lambda$.  Then
-  \begin{equation}\label{erlang}
+  \begin{equation}\label{gamma_dist}
   Pd(T_n = t) = \frac{\lambda^nt^{n-1}}{(n-1)!}e^{-\lambda{t}}.
   \end{equation}
   \begin{proof}
@@ -206,9 +170,10 @@ The quantity of interest here is $Pd(T_n = t)$, the probability density that the
     \end{align*}
   \end{proof}
 \end{Thm}
-The probability density \eqref{erlang} is known as the gamma density in the literature.
+The probability density \eqref{gamma_dist} is known as the gamma density in the literature.
 
-Now define $\eta(t)$ to be the ``counting function'' which is the total number of arrivals up to time $t$.
+Now define $\eta(t)$ to be the ``counting function'' which is the total number of arrivals up to, and including, time $t$. $\eta(t)$
+is an integer-valued random variable defined on $(0,\infty)$.
 \begin{Cor}
   For a Poisson process of rate $\lambda$ as in the theorem, 
   \begin{equation}\label{poisson}
@@ -221,7 +186,7 @@ Now define $\eta(t)$ to be the ``counting function'' which is the total number o
     $$
     Now for $n > 0$, we have
     \begin{align*}
-      Pr(\eta(t) = n) &= \int_0^tPd(T_n = s \& \eta(t-s) = 0)ds\
+      Pr(\eta(t) = n) &= \int_0^tPd(T_n = s ~\&~ \eta(t-s) = 0)ds\
       &= \int_0^t\frac{\lambda^ns^{n-1}}{(n-1)!}e^{-\lambda{s}}e^{-\lambda(t-s)}ds\\
       &=\frac{\lambda^n}{(n-1)!}e^{-\lambda{t}}\int_0^t s^{n-1}ds\\
       &= \frac{\lambda^nt^{n}}{n!}e^{-\lambda{t}}.
@@ -261,12 +226,12 @@ and the mean rate in that interval is
 
 In the sequel, we will approximate an inhomogenous Poisson process with exponentially decaying rate $\lambda(t)$
 in an interval $[t_0,t_1]$ by the homogeneous Poisson process with rate $\hat{\lambda}(t_0,t_1)$.  In particular,
-\eqref{erlang} becomes
-\begin{equation}\label{erlang:1}
+\eqref{gamma_dist} becomes
+\begin{equation}\label{gamma_dist:1}
   Pd(T_n = t) = \frac{\hat{\lambda}(0,t)^nt^{n-1}}{(n-1)!}e^{-t\hat{\lambda}(0,t)},
 \end{equation}
 and if $n$ is a random variable whose distribution is known but whose value is unknown, we will further approximate
-\eqref{erlang} by substituting $\hat{n}(0,t)$ for $n$ in \eqref{erlang:1}.
+\eqref{gamma_dist} by substituting $\hat{n}(0,t)$ for $n$ in \eqref{gamma_dist:1}.
 
 
 \section{The Hawkes Process}
@@ -321,11 +286,11 @@ if $\P_j$ has generated $k_{ij}-1$ previous events prior to time $t_i$, then we 
 \begin{equation}\label{p_ij}
   p_{ij} :=  Pd(T_i = t_i \mid j, k_{ij}) = \frac{\lambda_{ij}^{k_{ij}}t_{ij}^{(k_{ij}-1)}}{(k_{ij}-1)!}e^{-\lambda_{ij}t_{ij}}
 \end{equation}
-by \eqref{erlang}, where $\lambda_{ij}$ and $t_{ij}$ were defined above.
+by \eqref{gamma_dist}, where $\lambda_{ij}$ and $t_{ij}$ were defined above.
 
 Unfortunately, however, neither the value of $k_{ij}$ nor even the value of $j$ is  observed, i.e. we don't know
 which process $\P_j$ generated the event $T_i = t_i$, nor do we know how many events were generated by $\P_j$
-prior to $t_i$.  Thus, we can't use \eqref{erlang} directly. Instead,
+prior to $t_i$.  Thus, we can't use \eqref{gamma_dist} directly. Instead,
 we define a hidden state space $S := \{0,1,2,\dots,N\}$ and assume that $j\in{S}$ has probability $Pr(j) := \omega_j$.
 This makes $j$ a random variable with a prior distribution and converts \eqref{p_ij} to a mixture distribution, but
 we still don't know the value of $k_{ij}$.  So we
@@ -431,44 +396,196 @@ Substituting this approximation into \eqref{Q1} yields
   - .5\log(2\pi) \right),
   \end{split}
 \end{equation}
-and hence
+and hence, using Stirling's approximation, we have 
 \begin{equation}\label{dQ_dk}
-  \frac{\partial\tilde{Q}}{\partial\k_{ij}} = \frac{\omega'_{ij}}{2\k_{ij}}.
+  \frac{\partial\tilde{Q}}{\partial\k_{ij}} = \begin{cases}
+\frac{\omega'_{ij}}{2\k_{ij}}&\text{for $i > j$,}\\
+0 & \text{otherwise}.
+\end{cases}
 \end{equation}
 
 
-We can now solve for $\k_{ij}$.  We will enforce a constraint, namely that
-the total number of expected arrivals at time $t_l$ equals the actual number, which is just $l$:
+For the sake of simplicity, we will now drop the dependence of $\sigma$ and $\rho$ on the mark $m$, which means
+that all child processes have the same parameters.  So there are now three parameters $\lambda_0$, $\sigma$, and
+$\rho$ which need to be re-estimated by choosing them to increase, if not maximize, $\tilde{Q}$.  
+Using \eqref{Q2}, we see that each of these parameters only affect $\tilde{Q}$ indirectly, via $\k_{ij}$, and we recall
+from \eqref{k_hat} that
 $$
-\sum_{m=0}^{l-1}\k_{lm} = l.
-$$
-Put
-$$
-\Sigma_l:= l - \sum_{m=0}^{l-1}\k_{lm} \quad(1\le l \le N).
-$$
-Note that
-$$
-\frac{\partial\Sigma_l}{\partial\k_{ij}} = \delta_{li}\begin{cases}
-  -1 & \text{if $j < i$ } \\
-  0 & \text{if $j \ge i$}.
+\k_{ij} = \begin{cases}
+\lambda_0t_{ij} & \text{if $j = 0$}\\
+\frac{\sigma}{\rho}(1-e^{-\rho{t_{ij}}}) & \text{otherwise}.
 \end{cases}
 $$
-Once again, we enforce the constraints $\Sigma_l = 0$  using lagrange multipliers $\nu_l$ for $(1\le l\le N)$.
-Then for $ j < i$, we have
-\begin{equation}
+Moreover, it is clear that for $\rho{t_{ij}}$ large,
+$$
+\k_{ij} \approx \frac{\sigma}{\rho},
+$$
+while by expanding the exponential in a Taylor series about 0, we see that
+\begin{equation}\label{k_hat(0)}
+\k_{ij}\mid_{\rho=0} := \lim_{\rho\rightarrow{0^+}}\k_{ij} = \sigma{t_{ij}}.
+\end{equation}
+
+Now taking partial derivatives, we have
+\begin{equation}\label{dk_dparams}
   \begin{split}
-    0 &= \frac{\partial\tilde{Q}}{\partial\k_{ij}} + \sum_{l=1}^N\nu_l\frac{\partial\Sigma_l}{\partial\k_{ij}} \\
-    &= \frac{\omega'_{ij}}{2\k_{ij}} - \nu_i,\quad\text{whence}\\
-    2\k_{ij}  &= \omega'_{ij}\nu_i^{-1},\\
-    2\sum_{j=0}^{i-1}\k_{ij} &= \nu_i^{-1}\sum_{j=0}^{i-1}\omega'_{ij},\\
-    \nu_i &= \frac{1}{2i}\sum_{j=0}^{i-1}\omega'_{ij},\\
+    \frac{\partial\k_{i0}}{\partial\lambda_0} &= 
+        t_{i0} \quad\text{and for $j > 0$,}\\
+    \frac{\partial\k_{ij}}{\partial\sigma} &= 
+      \frac{\k_{ij}}{\sigma} \quad\text{and} \\
+    \frac{\partial\k_{ij}}{\partial\rho} &=
+    \left(-\frac{\k_{ij}}{\rho} -t_{ij}(\k_{ij} - \frac{\sigma}{\rho})\right)\\
+    &= -\frac{\k_{ij}}{\rho}\left(1 + t_{ij}(\rho-\frac{\sigma}{\k_{ij}}\right) \\
+    &= -\frac{\k_{ij}}{\rho}\left(1 + \rho{t_{ij}}(1-\frac{1}{1-e^{-\rho{t_{ij}}}})\right)\\
+    &= -\frac{\k_{ij}}{\rho}\left(1 - \rho{t_{ij}}(\frac{e^{-\rho{t_{ij}}}}{1-e^{-\rho{t_{ij}}}})\right)\\
+    &= -\frac{\sigma}{\rho^2}\left(1-e^{-\rho{t_{tj}}} - \rho{t_{ij}}e^{-\rho{t_{ij}}}\right)\\
+    &= -\frac{\sigma}{\rho}\left(\frac{1-e^{-\rho{t_{tj}}}}{\rho} - t_{ij}e^{-\rho{t_{ij}}}\right).
   \end{split}
 \end{equation}
-However, by definition (see \eqref{omega'_ij}) we have
+Expanding the exponentials to first order, we find that
+\begin{equation}\label{dk_drho(0)}
+  \begin{split}
+    \left.\frac{\partial\k_{ij}}{\partial\rho}\right|_{\rho=0} &=
+    -\frac{\sigma}{\rho}\left(t_{ij} - t_{ij}e^{-\rho{t_{ij}}}\right)\\
+      &= -\sigma t_{ij}\frac{1-e^{-\rho t_{ij}}}{\rho}\\
+      &= -\sigma{t_{ij}}^2.
+\end{split}
+\end{equation}
+
+In particular, for $j = 0$,  \eqref{dQ_dk} and \eqref{dk_dparams} immediately imply
+\begin{equation}\label{dQ_dlambda}
+  \begin{split}
+\frac{\partial\tilde{Q}}{\partial\lambda_0} &= \sum_{i=1}^N\frac{\omega'_{i0}}{2\k_{i0}}t_{i0} 
+= \frac{1}{2\lambda_0}\sum_{i=1}^N\omega'_{i0} = \frac{W'_0}{2\lambda_0},\quad\text{where}\\
+W'_0 :&= \sum_{i=1}^N\omega'_{i0}.
+\end{split}
+\end{equation}
+
+It's also easy to see that
+\begin{equation}\label{dQ_dsigma}
+\begin{split}
+  \frac{\partial\tilde{Q}}{\partial\sigma} &= \sum_{i>j>0}\frac{\omega'_{ij}}{2\k_{ij}}\frac{\k_{ij}}{\sigma} 
+= \frac{1}{2\sigma}\sum_{i>j>0}\omega'_{ij} = \frac{W'_1}{2\sigma},
+  \quad\text{where} \\
+  W'_1 :&= \sum_{i>j>0}\omega'_{ij}.
+  \end{split}
+\end{equation}
+
+And finally, the chain rule yields
+
+\begin{equation}\label{dQ_drho}
+\begin{split}
+  \frac{\partial\tilde{Q}}{\partial\rho} &= \sum_{i>j>0}\frac{\partial\tilde{Q}}{\partial\k_{ij}}\cdot
+  \frac{\partial\k_{ij}}{\partial\rho}\\
+&= -\sum_{i>j>0}\frac{\omega'_{ij}}{2\k_{ij}}\frac{\sigma}{\rho}\left(\frac{1-e^{-\rho{t_{tj}}}}{\rho} - t_{ij}e^{-\rho{t_{ij}}}\right), \\
+&= -\frac{1}{2\rho}\sum_{i>j>0}\omega'_{ij}\left(\frac{1}{\rho} - t_{ij}\frac{e^{-\rho{t_{ij}}}}{1-e^{-\rho t_{ij}}}\right)\\
+%&= -\frac{1}{2\rho}\sum_{i>j>0}\omega'_{ij}\left(\frac{1}{\rho} + t_{ij}\frac{1}{1-e^{\rho t_{ij}}}\right).
+\end{split}
+\end{equation}
+Furthermore, using \eqref{k_hat(0)} and \eqref{dk_drho(0)}, we have
+\begin{equation}\label{dQ_drho(0)}
+  \left.\frac{\partial\tilde{Q}}{\partial\rho}\right|_{\rho=0} = -\sum_{i>j>0}\frac{\omega'_{ij}}{2\sigma t_{ij}}\sigma t_{ij}^2 = -\frac{1}{2}\sum_{i>j>0}\omega'_{ij}t_{ij}.
+\end{equation}
+    
+    
+Note that by definition,
 $$
-\sum_{j=0}^{i-1}\omega'_{ij} = 1\quad\text{for all $i,j$},
+\sum_{j=0}^{N-1}\omega'_{ij} = 1\quad\text{for all } i,
 $$
-so therefore we get
+and therefore
+\begin{equation}\label{W0+W1}
+  W'_0 + W'_1 = N
+\end{equation}
+We can now solve for $\lambda_0$, $\sigma$, and $\rho$.  However, we
+need to enforce an obvious constraint, namely that
+the total number of expected arrivals at time $t_N$ equals the
+actual number, which is just $N$:
+\begin{equation}\label{constraint}
+  \sum_{j=0}^{N-1}\k_{Nj} = N.
+\end{equation}
+Define
+$$
+S := N - \sum_{j=0}^{N-1}\k_{Nj},
+$$
+then we solve the constrained maximization problem using a lagrange multiplier $\nu$ just as we did above. Our first two constrained maximization equations are
+\begin{equation}\label{eq1}
+  \begin{split}
+    0 &= \frac{\partial\tilde{Q}}{\partial\lambda_0} + \nu\frac{\partial{S}}{\partial\lambda_0} \\
+    &=  \frac{W'_0}{2\lambda_0} - {\nu}t_{N0},\quad\text{whence}\\
+    \lambda_0 &= \frac{W'_0}{2\nu{t_{n0}}}.
+  \end{split}
+\end{equation}
+and
+\begin{equation}\label{eq2}
+  \begin{split}
+    0 &= \frac{\partial\tilde{Q}}{\partial\sigma} + \nu\frac{\partial{S}}{\partial\sigma} \\
+    &= \frac{W'_1}{2\sigma}-
+    \frac{\nu}{\sigma}\sum_{j=1}^{N-1}\k_{Nj}.
+  \end{split}
+\end{equation}
+
+Applying the constraint equation \eqref{constraint}, we get
+\begin{align*}
+      \frac{\nu}{\sigma}(N-\k_{0N}) &= \frac{W'_1}{2\sigma},\\
+      \nu(N-\k_{0N}) &= \frac{W'_1}{2}.
+  \end{align*}
+
+However, since $\k_{N0} = \lambda_0t_{N0}$, we can substitute
+from \eqref{eq1} into \eqref{eq2} and use \eqref{W0+W1}
+to obtain the value of $\nu$:
+
+\begin{equation}\label{nu}
+  \begin{split}
+N\nu - \frac{W'_0}{2} &= \frac{W'_1}{2},\\ 
+\nu &= \frac{W'_0+W'_1}{2N} = \frac{1}{2}.
+  \end{split}
+\end{equation}
+Then \eqref{eq1} simplifies to
+\begin{equation} \label{lambda0:1}
+    \lambda_0 = \frac{W_0'}{t_{N0}}.
+\end{equation}
+
+Substituting $\nu =1/2$ and using \eqref{dQ_drho} and \eqref{dk_dparams}, our third and final constrained maximization
+equation is
+\begin{align*}
+  0 &= f(\rho) := \frac{\partial\tilde{Q}}{\partial\rho} + \frac{1}{2}\frac{\partial{S}}{\partial\rho} \\
+  &= -\frac{1}{2\rho}\sum_{i>j>0}\omega'_{ij}\left(\frac{1}{\rho} - t_{ij}\frac{e^{-\rho{t_{ij}}}}{1-e^{-\rho t_{ij}}}\right)
+%  &= -\frac{1}{2\rho}\sum_{i>j>0}\omega'_{ij}\left(1 + \frac{\rho{t_{ij}}}{(1 - e^{\rho{t_{ij}}}})\right)
+  +\frac{\sigma}{2\rho}\sum_{j=1}^{N-1}\left(\frac{1 - e^{-\rho{t_{Nj}}}}{\rho} - t_{Nj}e^{-\rho t_{Nj}}\right).
+\end{align*}
+Using the special values at $\rho=0$ found above at \eqref{k_hat(0)} and \eqref{dQ_drho(0)}, we see that
+$$
+f(0) = -\frac{1}{2}\sum_{i>j>0}\omega'_{ij}t_{ij} + \frac{\sigma}{2}\sum_{j=1}^{N-1}t_{Nj}^2.
+$$
+So we need to find the roots of $f(\rho)$.
+
+
+Note that it is easy to solve \eqref{constraint} for $\sigma$ as a function of $\rho$ (and other
+known quantities):
+\begin{equation}\label{eq4}
+  \sigma(\rho) = (N - \lambda_0t_{N0})\left(\sum_{j=1}^{N-1}\frac{1-e^{-t_{Nj}\rho}}{\rho}\right)^{-1}.
+\end{equation}
+As noted above, the Taylor expansion for the exponential shows that
+$$
+\sigma(0) = (N - \lambda_0t_{N0})\left(\sum_{j=1}^{N-1}t_{Nj}\right)^{-1}.
+$$
+
+
+
+%\section{Numerical Results}
+\end{document}
+
+
+Indeed, a further simplification is available using the approximation 
+$$
+\log(1-x) = -x + O(x^2)\quad(0<x<1).
+$$
+Then for $j\in J(m)$ we get
+\begin{align*}
+\log(\k_{ij}) &\approx \log(\sigma_m) - \log(\rho_m) + \log(1-e^{-\rho_mt_{ij}})\\
+&= \log(\sigma_m) -\log(\rho_m) - e^{-\rho_mt_{ij}}.
+\end{align*}
+
+
 \begin{equation}\label{k_hat:1}
   \k_{ij} = i\omega'_{ij}.
 \end{equation}
@@ -510,9 +627,6 @@ We then evaluate \eqref{k_ij} and \eqref{d_sigma,rho} at the prior parameters $\
 overdetermined linear equations in $\Delta\sigma_m$ and $\Delta\rho_m$ as in section \ref{NLS} which we use
 to reestimate $\sigma_m$ and $\rho_m$.  We can then choose to iterate by recomputing partials, or just proceed
 with another EM iteration.
-
-%\section{Numerical Results}
-\end{document}
 
 
 The probability density of any finite set of arrival times

@@ -492,7 +492,7 @@ public:
   SCALAR& operator[](int i){ return Base::operator()(i,0);}
   SCALAR& operator[](int i) const { return Base::operator()(i,0);}
 
-  ColVector operator+=(ColVector& x){return Base::operator+=(x);}
+  void operator+=(ColVector& x){Base::operator+=(x);}
   ColVector operator&(ColVector& x) const{
     assert(x.nrows() == this->_nrows);
     ColVector a(this->_nrows);
