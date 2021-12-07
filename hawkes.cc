@@ -1,3 +1,4 @@
+// testing merge
 #include<iostream>
 #include<fenv.h>
 #include<fstream>
@@ -298,36 +299,3 @@ int main(int argc, char** argv){
   // output results here
   cout<<format("lambda: %f, sigma: %f, rho: %f\n",lambda,sigma,rho); 
 }  
-
-      // for(int m = 0;m < marks.nkeys();m++){
-      //   Mark mark = marks(m);
-      //   if(mark.nkids < 2) continue;
-      //   double& sigma = mark.sigma;
-      //   double& rho = mark.rho;
-      //   double rms_error = 0;
-      //   AtA.fill(0);
-      //   Atb.fill(0);
-      //   for(int k = 0; k < mark.nkids;k++){ // get the equations for this mark
-      //     int j = mark.kids[k]; // next child for this mark
-      //     for(int i = j+1;i < N;i++){ // loop over all subsequent events
-      //       double t_ij = data[i].time - data[j].time;
-      //       A_k[0] = k_hat_0(i,j)/sigma;
-      //       A_k[1] = t_ij*(sigma/rho - k_hat_0(i,j)) - k_hat_0(i,j)/rho;
-      //       double b = k_hat(i,j) - k_hat_0(i,j); // residual
-      //       AtA += A_k*A_k.Tr();
-      //       Atb[0] += A_k[0]*b; Atb[1] += A_k[1]*b;
-      //       rms_error += b*b;
-      //     }
-      //   }
-      //   Matrix<double> AtAinv = inv(AtA);
-      //   delta = AtAinv*Atb;
-      //   rms_error = sqrt(rms_error);
-      //   double f = .1*sigma/fabs(delta[0]); // bound changes to .1 of originals
-      //   if(f < 1) delta[0] *= f;
-      //   sigma += delta[0];
-      //   f = .1*rho/fabs(delta[1]);
-      //   if(f < 1) delta[1] *= f;
-      //   rho += delta[1];
-      //   cout << format("update for mark %s: sigma: %f rho: %f rms_error: %f\n",
-      //                  mark.name.c_str(),mark.sigma,mark.rho,rms_error);
-      // } // on to the next mark
