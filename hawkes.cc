@@ -33,33 +33,50 @@ class SigmaRho{
   
   double& rho; // initial values and outputs
   double& sigma;
-  
+
   int N;
   
+  double t(int i){return data[i].time;}
 
   double sigma_comp(double r){
-    if(r == 0) return 0;
+    if(r == 0) {
+      double sum = 0;
+      for(int j = 1;j < N;j++)sum += t(N) - t(j);
+      return (N-lambda)/sum;
+    }
     double sum = 0;
     for(int j = 1;j < N;j++)sum += 1-exp(-r*(1-t(j)));
     return (N-lambda)*r/sum;
   }
 
-  double t(int i){return data[i].time;}
 
   double y(double r){ // compute -dQ_drho + dS_drho
+    double sigma = sigma_comp(r);
     double Q = 0;
     double S = 0;
-    double s = sigma_comp(r);
-    for(int i = 1;i <= N;i++){
-      for(int j = 1;j < i;j++){
-        double k_hat = s*(1-exp(-r*(t(i)-t(j))));
-        double x = 1+(t(i)-t(j))*(r-s/k_hat);
-        Q += omega1(i,j)*x;
-        if(i == N) S += k_hat*x; 
+    if(r == 0){
+      for(int i = 2;i <= N;i++){
+        for(int j = 1;j < i;j++){
+          double t_ij = t(i)-t(j);
+          Q += omega1(i,j)*t_ij;
+          if(i == N) S += t_ij*t_ij;
+        }
       }
+      return (sigma*S - Q)/2;
     }
-    return(S-Q);
+    else {
+     for(int i = 2;i <= N;i++){
+       for(int j = 1;j < i;j++){
+         double t_ij = t(i)-t(j);
+         double e_ij = exp(-r*t_ij);
+         Q += omega1(i,j)*(1/r - t_ij*e_ij/(1-e_ij));
+         if(i == N) S += ((1-e_ij)/r - t_ij*e_ij);
+       }
+     }
+     return (sigma*S-Q)/(2*r);
+    }
   }
+  
 public:
   SigmaRho(const Matrix<double>& om, const Array<HawkesPoint>& d,
            double l, double& r, double& s) :
@@ -69,6 +86,7 @@ public:
     int niters = 0;
     double y_min = y(0);
     double y_max = y(1);
+    cout << format("y(0) = %f, y(1) = %f\n",y_min, y_max);
     double r_min = 0;
     double r_max = 1;
     double new_r, new_y;
@@ -85,9 +103,10 @@ public:
     else cout << "rmax = "<<r_max<<", y_max = "<<y_max<<endl;
         
     niters = 0;
-    while(niters++ < max_iters && fabs(y_min-y_max) > eps){
+    while(niters++ < max_iters && fabs(r_min-r_max) > eps){
       new_r = (r_min+r_max)/2;
       new_y = y(new_r);
+      //      cout << format("sr_iteration %d: r: %f y: %f\n",niters,new_r,new_y);
       if(y_min*new_y > 0) {
         y_min = new_y;
         r_min = new_r;
@@ -99,7 +118,7 @@ public:
     }
     if(niters >= max_iters){
       cerr << "SigmaRho.solve did not converge after "<<niters<<
-        " iterations with error = "<<fabs(y_min-y_max)<<endl;
+        " iterations with error = "<<fabs(r_min-r_max)<<endl;
       exit(1);
     }
     rho = new_r;
@@ -132,13 +151,13 @@ int main(int argc, char** argv){
   string model_output_file = "model.out";
   string file_dir = "";
   int ndata = 100;
-  double sigma_0 = 2.0;
-  double rho_0 = 1;
-  double lambda_0 = .1;
+  double sigma_0 = 20;
+  double rho_0 = log(2)/.1; // nominal half-life = .1
+  double lambda_0 = 10; // nominal no. of base-process events in [0,1].
   int max_iters = 5;
   int simulation = 1;
   int sr_iters = 20;
-  int sr_err = 1.0e-8;
+  double sr_err = 1.0e-8;
   
   GetOpt cl(argc,argv); // parse command line
   cl.get("data_file",data_file); cout << "data file: "<<data_file<<endl;
@@ -188,14 +207,15 @@ int main(int argc, char** argv){
     data[i].time = atof(awk[2]);
     i++;
   }
-  int N = i-1; // t[0] is a reference time, not an event!
+  int N = i-1; // t[0] is a reference time, not an event!  
   for(int i = 0;i <= N;i++) data[i].time = (data[i].time-data[0].time)/data[N].time; // normalize times to [0,1].
 
 
   /* The base process starts at 0 and generates the first arrival
-   * at t[1], as well as others throughout the time interval [0,1]   * the total number of arrivals is N.  Each arrival generates
-   * a child process, which *may* generate one or more events (if
-   * it doesn't start too close to the end at  t=1.
+   * at t[1], as well as others throughout the time interval [0,1]   
+   * the total number of arrivals is N.  Each arrival (except t[N]) generates
+   * a child process, which *may* generate one or more events, so there are
+   * N-1 child processes.   
    */
   
 
@@ -254,14 +274,14 @@ int main(int argc, char** argv){
       log_likelihood += log(row_sum);
       for(int j = 0;j < N;j++) omega1(i,j) /= row_sum;
       int truth = simulation? atoi(data[i].mark.c_str()) : -1;
-      cout << format("i = %d: mode: process %d (%f) truth: process %d\n",i,mode,omega1(i,mode),truth);
+      //      cout << format("i = %d: mode: process %d (%f) truth: process %d\n",i,mode,omega1(i,mode),truth);
       if(simulation)score += log(i*omega1(i,truth));
     }
     cout << "log likelihood at iteration "<<niters<<": "<<log_likelihood<<endl;
     cout << format("scoring rate: %f bits/obs\n",score/((N-1)*log(2)));
     if(niters < max_iters){
       // now we re-estimate the parameters
-      cout << "begin iteration "<<niters<<endl;
+      cout << "\nbegin iteration "<<niters<<endl;
       for(int j = 0;j < N;j++){
         omega[j] = 0.0;
         for(i = j+1;i <= N;i++) omega[j] += omega1(i,j);
@@ -269,10 +289,8 @@ int main(int argc, char** argv){
       }
       lambda = omega[0]/data[N].time;//Note: t[N] = 1. This is for clarity
       cout << "update for lambda: "<<lambda<<endl;
-
-      // now re-estimate rho and sigma using non-linear least squares
       sr.solve(sr_iters,sr_err); // updates sigma and rho
-      cout << format("at iteration %d, sigma = %f, rho = %f",
+      cout << format("at iteration %d, sigma = %f, rho = %f\n",
                      niters,sigma,rho);
     } // end re-estimation
     niters++;
