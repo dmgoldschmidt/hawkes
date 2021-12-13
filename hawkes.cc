@@ -42,7 +42,13 @@ class SigmaRho{
   double sigma_comp(double r){
     if(r == 0) {
       double sum = 0;
-      for(int j = 1;j < N;j++)sum += t(N) - t(j);
+      for(int j = 1;j < N;j++){
+        sum += t(N) - t(j);
+        // if(sum < 0){
+        //   cout << format("negative sum at t(%d) = %f\n",j,t(j));
+        // }
+      }
+      cout << format("good version sigma(0): %f, sum: %f\n",sum,(N-lambda)/sum);
       return (N-lambda)/sum;
     }
     double sum = 0;
@@ -79,9 +85,9 @@ class SigmaRho{
   }
   
 public:
-  SigmaRho(const Matrix<double>& om, const Array<HawkesPoint>& d,
+  SigmaRho(int n, const Matrix<double>& om, const Array<HawkesPoint>& d,
            double l, double& r, double& s) :
-    omega1(om),data(d),lambda(l),rho(r),sigma(s),N(om.nrows()) {}
+    omega1(om),data(d),lambda(l),rho(r),sigma(s),N(n) {}
 
   void solve(int max_iters, double eps){
     int niters = 0;
@@ -125,6 +131,20 @@ public:
     rho = new_r;
     sigma = sigma_comp(rho);
   }
+
+  void output(char* file, double max_rho = 100){
+    ofstream out(file);
+    if(!out.good()){
+      cerr << "Can't open "<<file<<endl;
+      exit(1);
+    }
+    double r_temp;
+    for(r_temp = 0; r_temp < max_rho;r_temp += .1){
+      out << r_temp<<" "<<y(r_temp)<<endl;
+    }
+    out.close();
+  }
+
 };
 
 
@@ -155,9 +175,9 @@ int main(int argc, char** argv){
   double sigma_0 = 20;
   double rho_0 = log(2)/.1; // nominal half-life = .1
   double lambda_0 = 10; // nominal no. of base-process events in [0,1].
-  int max_iters = 5;
+  int max_iters = 100;
   int simulation = 1;
-  int sr_iters = 20;
+  int sr_iters = 50;
   double sr_err = 1.0e-8;
   
   GetOpt cl(argc,argv); // parse command line
@@ -195,7 +215,7 @@ int main(int argc, char** argv){
   }
 
   int i = 0;
-  while((awk.nf = awk.next()) != -1 && (ndata == 0?  true : i < ndata)){ // exit on EOF
+  while((awk.nf = awk.next()) != -1 && (ndata == 0?  true : i <= ndata)){ // exit on EOF
     if(awk.nf != 2) continue;
     data[i].mark = string(awk[1]);
     Mark& m = marks[data[i].mark];
@@ -238,7 +258,9 @@ int main(int argc, char** argv){
   for(int j = 0;j < N;j++) omega.fill((N - j)/sum);
   
   // begin EM iteration
-  SigmaRho sr(omega1,data,lambda,rho,sigma);
+  SigmaRho sr(N,omega1,data,lambda,rho,sigma);
+  sr.output("rho_test.plt");
+  exit(0);
   int niters = 0;
   while(niters <= max_iters){
     // compute posterior probability matrix omega1
