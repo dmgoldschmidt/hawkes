@@ -28,8 +28,8 @@ ostream& operator<<(ostream& os, const HawkesPoint& h){
 
         
 class SigmaRho{
-  const Matrix<double>& omega1; // inputs
-  const Array<HawkesPoint>& data;
+  Matrix<double>& omega1; // inputs
+  Array<HawkesPoint>& data;
   double lambda;
   
   double& rho; // initial values and outputs
@@ -43,21 +43,21 @@ class SigmaRho{
     if(r == 0) {
       double sum = 0;
       for(int j = 1;j < N;j++){
-        sum += t(N) - t(j);
+        sum += 1 - t(j);
         // if(sum < 0){
         //   cout << format("negative sum at t(%d) = %f\n",j,t(j));
         // }
       }
-      cout << format("good version sigma(0): %f, sum: %f\n",sum,(N-lambda)/sum);
+      cout << format("sigma(0): %f, sum: %f\n",sum,(N-lambda)/sum);
       return (N-lambda)/sum;
-    }
-    double sum = 0;
+    } // r > 0
+    double sum = 0; // r > 0 here
     for(int j = 1;j < N;j++)sum += 1-exp(-r*(1-t(j)));
     return (N-lambda)*r/sum;
   }
 
 
-  double y(double r){ // compute -dQ_drho + dS_drho
+  double f(double r){ // compute -dQ_drho + dS_drho
     double sigma = sigma_comp(r);
     double Q = 0;
     double S = 0;
@@ -69,7 +69,8 @@ class SigmaRho{
           if(i == N) S += t_ij*t_ij;
         }
       }
-      return (sigma*S - Q)/2;
+      //      cout << format("Q(%f) = %f, S = %f\n",r,Q,S);
+      return (sigma*S - Q)/4;
     }
     else {
      for(int i = 2;i <= N;i++){
@@ -77,49 +78,53 @@ class SigmaRho{
          double t_ij = t(i)-t(j);
          double e_ij = exp(-r*t_ij);
          Q += omega1(i,j)*(1/r - t_ij*e_ij/(1-e_ij));
-         if(i == N) S += ((1-e_ij)/r - t_ij*e_ij);
+         if(i == N) S += (1-e_ij)/r - t_ij*e_ij;
        }
      }
-     return (sigma*S-Q)/(2*r);
+     //     cout << format("Q(%f) = %f, S = %f\n",r,Q,S);
+     return (sigma*S/r - Q)/2;
     }
   }
   
 public:
-  SigmaRho(int n, const Matrix<double>& om, const Array<HawkesPoint>& d,
+  SigmaRho(int n, Matrix<double>& om, Array<HawkesPoint>& d,
            double l, double& r, double& s) :
     omega1(om),data(d),lambda(l),rho(r),sigma(s),N(n) {}
 
   void solve(int max_iters, double eps){
     int niters = 0;
-    double y_min = y(0);
-    double y_max = y(1);
-    cout << format("y(0) = %f, y(1) = %f\n",y_min, y_max);
+    double f_min = f(0);
+    double f_max = f(.1);
+    cout << format("f(0) = %f, f(1) = %f\n",f_min, f_max);
     double r_min = 0;
-    double r_max = 1;
-    double new_r, new_y;
+    double r_max = .1;
+    double new_r, new_f;
 
-    //step1: find an r s.t. y_min & y_max have opp. sign
-    while(niters++ < max_iters && y_min*y_max > 0){
-      r_max *= 2;
-      y_max = y(r_max);
+    //step1: find an r s.t. f_min & f_max have opp. sign
+    while(niters++ < max_iters){
+      if(f_min*f_max <= 0) break;
+      cout << format("f(%f) = %f\n",r_max,f(r_max));
+      r_max += .1;
+      f_max = f(r_max);
     }
-    if(y_min*y_max > 0){
+    if(f_min*f_max > 0){
       cerr << "failed to find r_max after "<<niters<<" iterations."<<endl;
+      output("rho_test.plt");
       exit(1);
     }
-    else cout << "rmax = "<<r_max<<", y_max = "<<y_max<<endl;
+    else cout << "rmax = "<<r_max<<", f_max = "<<f_max<<endl;
         
     niters = 0;
     while(niters++ < max_iters && fabs(r_min-r_max) > eps){
       new_r = (r_min+r_max)/2;
-      new_y = y(new_r);
-      //      cout << format("sr_iteration %d: r: %f y: %f\n",niters,new_r,new_y);
-      if(y_min*new_y > 0) {
-        y_min = new_y;
+      new_f = f(new_r);
+      //      cout << format("sr_iteration %d: r: %f f: %f\n",niters,new_r,new_f);
+      if(f_min*new_f > 0) {
+        f_min = new_f;
         r_min = new_r;
       }
       else{
-        y_max = new_y;
+        f_max = new_f;
         r_max = new_r;
       }
     }
@@ -140,7 +145,7 @@ public:
     }
     double r_temp;
     for(r_temp = 0; r_temp < max_rho;r_temp += .1){
-      out << r_temp<<" "<<y(r_temp)<<endl;
+      out << r_temp<<" "<<f(r_temp)<<endl;
     }
     out.close();
   }
@@ -172,9 +177,9 @@ int main(int argc, char** argv){
   string model_output_file = "model.out";
   string file_dir = "";
   int ndata = 100;
-  double sigma_0 = 20;
+  double sigma_0 = 1;
   double rho_0 = log(2)/.1; // nominal half-life = .1
-  double lambda_0 = 10; // nominal no. of base-process events in [0,1].
+  double lambda_0 = 50; // nominal no. of base-process events in [0,1].
   int max_iters = 100;
   int simulation = 1;
   int sr_iters = 50;
@@ -259,8 +264,6 @@ int main(int argc, char** argv){
   
   // begin EM iteration
   SigmaRho sr(N,omega1,data,lambda,rho,sigma);
-  sr.output("rho_test.plt");
-  exit(0);
   int niters = 0;
   while(niters <= max_iters){
     // compute posterior probability matrix omega1
@@ -302,6 +305,8 @@ int main(int argc, char** argv){
     }
     cout << "log likelihood at iteration "<<niters<<": "<<log_likelihood<<endl;
     cout << format("scoring rate: %f bits/obs\n",score/((N-1)*log(2)));
+    //    sr.output("rho_test.plt");
+    //    exit(0);
     if(niters < max_iters){
       // now we re-estimate the parameters
       cout << "\nbegin iteration "<<niters<<endl;
@@ -313,8 +318,8 @@ int main(int argc, char** argv){
       lambda = omega[0]/data[N].time;//Note: t[N] = 1. This is for clarity
       cout << "update for lambda: "<<lambda<<endl;
       sr.solve(sr_iters,sr_err); // updates sigma and rho
-      cout << format("at iteration %d, sigma = %f, rho = %f\n",
-                     niters,sigma,rho);
+      cout << format("at iteration %d, lambda = %f, sigma = %f, rho = %f\n",
+                     niters,lambda,sigma,rho);
     } // end re-estimation
     niters++;
   } // on to the next EM iteration
