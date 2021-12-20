@@ -262,7 +262,6 @@ For $0 < j < i$, We define
   \lambda_{ij} :&= \hat{\lambda}_j(0,t_{ij}) = \frac{\sigma_m}{\rho_mt_{ij}}(1-e^{-\rho_mt_{ij}}),\quad\text{and}\\
   \k_{ij} :&= \hat{\lambda_{ij}}t_{ij}.
 \end{align*}
-Recall that after our change of variable for $t$, we have $t_{i0} = t_i$ and $t_{N0} = 1$.
 
 With these definitions, $\lambda_{ij}$ is the mean rate of process $\P_j$ over
 the interval $[t_j,t_i]$, as given by \eqref{lambda_hat} and $\k_{ij}$ is the expected number
@@ -432,21 +431,16 @@ Now taking partial derivatives of $\k_{ij}$ with respect to all three parameters
     \frac{\partial\k_{i0}}{\partial\lambda_0} &= 
         t_{i0} \quad\text{for $j = 0$, and for $j > 0$ we have}\\
     \frac{\partial\k_{ij}}{\partial\sigma} &= 
-      \frac{\k_{ij}}{\sigma}\\
-    \frac{\partial\k_{ij}}{\partial\rho} &=
-    \left(-\frac{\k_{ij}}{\rho} -t_{ij}(\k_{ij} - \frac{\sigma}{\rho})\right)\\
-    &= -\frac{\k_{ij}}{\rho}\left(1 + t_{ij}(\rho-\frac{\sigma}{\k_{ij}}\right) \\
-    &= -\frac{\k_{ij}}{\rho}\left(1 + \rho{t_{ij}}(1-\frac{1}{1-e^{-\rho{t_{ij}}}})\right)\\
-    &= -\frac{\k_{ij}}{\rho}\left(1 - \rho{t_{ij}}(\frac{e^{-\rho{t_{ij}}}}{1-e^{-\rho{t_{ij}}}})\right)\\
+      \frac{\k_{ij}}{\sigma}, \quad\text{and}\\
+    \frac{\partial\k_{ij}}{\partial\rho} &= -\frac{\sigma}{\rho^2}(1-e^{-\rho t_{ij}}) + \frac{\sigma}{\rho}(t_{ij}e^{-\rho t_{ij}}) \\
     &= -\frac{\sigma}{\rho^2}\left(1-e^{-\rho{t_{tj}}} - \rho{t_{ij}}e^{-\rho{t_{ij}}}\right).\\
-%    &= -\frac{\sigma}{\rho}\left(\frac{1-e^{-\rho{t_{tj}}}}{\rho} - t_{ij}e^{-\rho{t_{ij}}}\right).
   \end{split}
 \end{equation}
-Moreover, to find evaluate this at $\rho = 0$, we expand the exponentials to the appropriate order:
+Moreover, to evaluate this last expression at $\rho = 0$, we expand the exponentials to the appropriate order:
 \begin{equation}\label{dk_drho(0)}
   \begin{split}
     \left.\frac{\partial\k_{ij}}{\partial\rho}\right|_{\rho=0} &=
-    -\frac{\sigma}{\rho^2}\left(1-(1-\rho t_{ij} + \frac{1}{2}\rho^2t_{ij}^2 + O(\rho^3) - \rho t_{ij}(1 - \rho t_{ij} + O(\rho^2)\right)\\
+    -\frac{\sigma}{\rho^2}\left(\rho t_{ij} - \frac{1}{2}\rho^2t_{ij}^2 + O(\rho^3)) - \rho t_{ij}(1 - \rho t_{ij} + O(\rho^2)\right)\\
       &= -\frac{\sigma}{\rho^2}\left(\rho t_{ij} - \frac{1}{2}\rho^2t_{ij}^2 + O(\rho^3) - \rho t_{ij} + \rho^2 t_{ij}^2 + O(\rho^3)\right)\\
         &= -\frac{\sigma}{\rho^2}\left(\frac{1}{2}\rho^2t_{ij}^2 + O(\rho^3)\right)\\
           &= -\frac{1}{2}\sigma t_{ij}^2.
@@ -524,7 +518,7 @@ Then using \eqref{dk_dparams} and \eqref{constraint} we get
 Moreover, \eqref{dk_drho(0)} implies that
 \begin{equation}\label{dS_drho(0)}
   \left.\frac{\partial S}{\partial\rho}\right|_{\rho=0} = \sum_{i>j>0}\left.\frac{\partial\k_{ij}}{\partial\rho}\right|_{\rho=0}
-  = \frac{\sigma}{2}\sum_{i>j>0}t_{ij}^2 = \frac{\sigma}{2}T_2.
+  = -\frac{\sigma}{2}\sum_{i>j>0}t_{ij}^2 = -\frac{\sigma}{2}T_2.
 \end{equation}
 
 
@@ -560,26 +554,25 @@ Then \eqref{eq1} simplifies to
 Using \eqref{eq2}, \eqref{dQ_drho}, and \eqref{dS_dparams} our third and final constrained maximization
 equation is
 \begin{align*}
-  0 &= f(\rho) := \frac{\partial\tilde{Q}}{\partial\rho} + \frac{1}{N+1}\frac{\partial{S}}{\partial\rho} \\
+  0 &= f(\rho) := \frac{\partial\tilde{Q}}{\partial\rho} - \frac{1}{N+1}\frac{\partial{S}}{\partial\rho} \\
   &= -\frac{1}{2}\sum_{i>j>0}\omega'_{ij}\left(\frac{1}{\rho} - t_{ij}\frac{e^{-\rho{t_{ij}}}}{1-e^{-\rho t_{ij}}}\right)
-  +\frac{\sigma}{(N+1)\rho^2}\sum_{i>j>0}\left(1 - e^{-\rho{t_{Nj}}} - \rho t_{Nj}e^{-\rho t_{Nj}}\right).
+  +\frac{\sigma}{(N+1)\rho^2}\sum_{i>j>0}\left(1 - e^{-\rho{t_{ij}}} - \rho t_{ij}e^{-\rho t_{ij}}\right).
 \end{align*}
 So we need to find the roots of $f(\rho)$.
 
 Using the special values at $\rho=0$ found above at \eqref{dQ_drho(0)} and \eqref{dS_drho(0)}, we see that
 $$
-f(0) = -\frac{1}{4}\sum_{i>j>0}\omega'_{ij}t_{ij} +\frac{\sigma}{4}\sum_{j=1}^{N-1}t_{Nj}^2.
+f(0) = -\frac{1}{4}\sum_{i>j>0}\omega'_{ij}t_{ij} +\frac{\sigma}{2(N+1)}T_2.
 $$
-
 
 Note that it is easy to solve \eqref{constraint} for $\sigma$ as a function of $\rho$ (and other
 known quantities):
 \begin{equation}\label{eq4}
-  \sigma(\rho) = (N - \lambda_0)\left(\sum_{j=1}^{N-1}\frac{1-e^{-t_{Nj}\rho}}{\rho}\right)^{-1}.
+  \sigma(\rho) = (N(N+1)/2 - \lambda_0T_1)\left(\sum_{i>j>0}\frac{1-e^{-\rho t_{ij}}}{\rho}\right)^{-1}.
 \end{equation}
 As noted above, the Taylor expansion for the exponential shows that
 $$
-\sigma(0) = (N - \lambda_0)\left(\sum_{j=1}^{N-1}t_{Nj}\right)^{-1}.
+\sigma(0) = (N(N+1)/2 - \lambda_0T_1)\left(\sum_{i>j>0}t_{ij}\right)^{-1}.
 $$
 
 
