@@ -446,11 +446,6 @@ Moreover, to evaluate this last expression at $\rho = 0$, we expand the exponent
           &= -\frac{1}{2}\sigma t_{ij}^2.
 \end{split}
 \end{equation}
-
-Next, we define
-$$
-W'_0 := \sum_{i=1}^N\omega'_{i0},\quad\text{and}\quad   W'_1 := \sum_{i>j>0}\omega'_{ij}.
-$$
 Note that by definition,
 $$
 \sum_{j=0}^{N-1}\omega'_{ij} = 1\quad\text{for all } i,
@@ -459,6 +454,15 @@ and therefore
 \begin{equation}\label{W0+W1}
   W'_0 + W'_1 = N
 \end{equation}
+
+Next, we define
+\begin{align*}
+  W'_0 :&= \sum_{i=1}^N\omega'_{i0},\quad  W'_1 := \sum_{i>j>0}\omega'_{ij},\quad T_0 := \sum_{i=1}^Nt_i,\\
+  T_1 :&= \sum_{i>j>0}t_{ij},\quad\text{and}\quad T_2 := \sum_{i>j>0}t_{ij}^2.
+\end{align*}
+
+
+
 
 Now for $j = 0$,  \eqref{dQ_dk} and \eqref{dk_dparams} immediately imply
 \begin{equation}\label{dQ_dlambda}
@@ -502,16 +506,12 @@ However, this idea turns out to be unwieldly.  Instead, we sum over $i$, putting
 \begin{equation}\label{constraint}
 S := \sum_{i>j>0}\k_{ij} - N(N+1)/2,
 \end{equation}
-and maximize $\tilde{Q}$ subject to the single constraint $S = 0$.  To simplify the following
-formulas, we define
-$$
-T_1 := \sum_{i=1}^Nt_,\quad\text{and}\quad T_2 := \sum_{i>j>0}t_{ij}^2.
-$$
+and maximize $\tilde{Q}$ subject to the single constraint $S = 0$.
 Then using \eqref{dk_dparams} and \eqref{constraint} we get
-\begin{equation}\label{dS_dparams}
+\begin{equation} \label{dS_dparams}
   \begin{split}
-    \frac{\partial{S}}{\partial\lambda_0} &= \sum_{i=1}^N\frac{\partial \k_{i0}}{\partial\lambda_0} = T_1,\\
-    \frac{\partial{S}}{\partial\sigma} &= \frac{1}{\sigma}\sum_{i>j>0}\k_{ij} = \frac{1}{\sigma}(N(N+1)/2 - \lambda_0T_1),\\
+    \frac{\partial{S}}{\partial\lambda_0} &= \sum_{i=1}^N\frac{\partial \k_{i0}}{\partial\lambda_0} = T_0,\\
+    \frac{\partial{S}}{\partial\sigma} &= \frac{1}{\sigma}\sum_{i>j>0}\k_{ij} = \frac{1}{\sigma}(N(N+1)/2 - \lambda_0T_0),\\
     \frac{\partial{S}}{\partial\rho} &= -\frac{\sigma}{\rho^2}\sum_{i>j>0}\left(1-e^{-\rho t_{ij}}-\rho t_{ij}e^{-\rho t_{ij}}\right).
   \end{split}
 \end{equation}
@@ -527,20 +527,20 @@ Our first two constrained maximization equations are
 \begin{equation}\label{eq1}
   \begin{split}
     0 &= \frac{\partial\tilde{Q}}{\partial\lambda_0} + \nu\frac{\partial{S}}{\partial\lambda_0} \\
-    &=  \frac{W'_0}{2\lambda_0} + {\nu}T_1,\quad\text{whence}\\
-    \lambda_0 &= -\frac{W'_0}{2\nu T_1}.
+    &=  \frac{W'_0}{2\lambda_0} + {\nu}T_0,\quad\text{whence}\\
+    \lambda_0 &= -\frac{W'_0}{2\nu T_0}.
   \end{split}
 \end{equation}
 and
 \begin{align*}
   0 &= \frac{\partial\tilde{Q}}{\partial\sigma} + \nu\frac{\partial{S}}{\partial\sigma} \\
-  &= \frac{W'_1}{2\sigma} + \frac{\nu}{\sigma}(N(N+1)/2 - \lambda_0T_1),\quad\text{whence}\\
-  \lambda_0 &= \frac{W_1'}{2\nu T_1} + \frac{N(N+1)}{2T_1}.
+  &= \frac{W'_1}{2\sigma} + \frac{\nu}{\sigma}(N(N+1)/2 - \lambda_0T_0),\quad\text{whence}\\
+  \lambda_0 &= \frac{W_1'}{2\nu T_0} + \frac{N(N+1)}{2T_0}.
 \end{align*}
 Equating the two expressions above for $\lambda_0$, and using \eqref{W0+W1}, we have
 \begin{equation}\label{eq2}
   \begin{split}
-    -\frac{W_0'+W_1'}{2\nu T_1} &= \frac{N(N+1)}{2T_1} \\
+    -\frac{W_0'+W_1'}{2\nu T_0} &= \frac{N(N+1)}{2T_0} \\
     -\frac{W_0'+W_1'}{\nu} &= N(N+1), \\
     \nu = -\frac{1}{N+1}.
   \end{split}
@@ -548,7 +548,7 @@ Equating the two expressions above for $\lambda_0$, and using \eqref{W0+W1}, we 
 
 Then \eqref{eq1} simplifies to
 \begin{equation} \label{lambda0:1}
-    \lambda_0 = \frac{(N+1)W_0'}{2T_1}.
+    \lambda_0 = \frac{(N+1)W_0'}{2T_0}.
 \end{equation}
 
 Using \eqref{eq2}, \eqref{dQ_drho}, and \eqref{dS_dparams} our third and final constrained maximization
@@ -568,11 +568,11 @@ $$
 Note that it is easy to solve \eqref{constraint} for $\sigma$ as a function of $\rho$ (and other
 known quantities):
 \begin{equation}\label{eq4}
-  \sigma(\rho) = (N(N+1)/2 - \lambda_0T_1)\left(\sum_{i>j>0}\frac{1-e^{-\rho t_{ij}}}{\rho}\right)^{-1}.
+  \sigma(\rho) = (N(N+1)/2 - \lambda_0T_0)\left(\sum_{i>j>0}\frac{1-e^{-\rho t_{ij}}}{\rho}\right)^{-1}.
 \end{equation}
 As noted above, the Taylor expansion for the exponential shows that
 $$
-\sigma(0) = (N(N+1)/2 - \lambda_0T_1)\left(\sum_{i>j>0}t_{ij}\right)^{-1}.
+\sigma(0) = (N(N+1)/2 - \lambda_0T_0)T_1^{-1}.
 $$
 
 

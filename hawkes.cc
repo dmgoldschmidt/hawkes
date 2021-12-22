@@ -31,7 +31,7 @@ class SigmaRho{
   Matrix<double>& omega1; // inputs
   Array<HawkesPoint>& data;
   double lambda;
-  
+  double T_0, T_1, T_2;
   double& rho; // initial values and outputs
   double& sigma;
 
@@ -40,56 +40,57 @@ class SigmaRho{
   double t(int i){return data[i].time;}
 
   double sigma_comp(double r){
-    if(r == 0) {
-      double sum = 0;
-      for(int j = 1;j < N;j++){
-        sum += 1 - t(j);
-        // if(sum < 0){
-        //   cout << format("negative sum at t(%d) = %f\n",j,t(j));
-        // }
-      }
-      cout << format("sigma(0): %f, sum: %f\n",sum,(N-lambda)/sum);
-      return (N-lambda)/sum;
-    } // r > 0
+    if(r == 0) return (N*(N+1)/2 - lambda*T_0)/T_1;
     double sum = 0; // r > 0 here
-    for(int j = 1;j < N;j++)sum += 1-exp(-r*(1-t(j)));
-    return (N-lambda)*r/sum;
+    for(int i = 1;i < N;i++){
+      for(int j = 1;j < i;j++)sum += 1-exp(-r*(t(i)-t(j)));
+    }
+    return (N*(N+1)/2 -lambda*T_0)*r/sum;
   }
-
 
   double f(double r){ // compute -dQ_drho + dS_drho
     double sigma = sigma_comp(r);
     double Q = 0;
-    double S = 0;
+    double S = sigma*T_2/(2*(N+1));
     if(r == 0){
       for(int i = 2;i <= N;i++){
         for(int j = 1;j < i;j++){
           double t_ij = t(i)-t(j);
           Q += omega1(i,j)*t_ij;
-          if(i == N) S += t_ij*t_ij;
         }
       }
       //      cout << format("Q(%f) = %f, S = %f\n",r,Q,S);
-      return (sigma*S - Q)/4;
+      return S - Q/4;
     }
     else {
      for(int i = 2;i <= N;i++){
        for(int j = 1;j < i;j++){
          double t_ij = t(i)-t(j);
          double e_ij = exp(-r*t_ij);
-         Q += omega1(i,j)*(1/r - t_ij*e_ij/(1-e_ij));
-         if(i == N) S += (1-e_ij)/r - t_ij*e_ij;
+         double x = 1 - e_ij - r*t_ij*e_ij;
+         Q += omega1(i,j)*x/(1-e_ij);
+         S += x;
        }
      }
      //     cout << format("Q(%f) = %f, S = %f\n",r,Q,S);
-     return (sigma*S/r - Q)/2;
+     return (sigma*S/((N+1)*r*r) -Q/(2*r);
     }
   }
   
 public:
   SigmaRho(int n, Matrix<double>& om, Array<HawkesPoint>& d,
            double l, double& r, double& s) :
-    omega1(om),data(d),lambda(l),rho(r),sigma(s),N(n) {}
+    omega1(om),data(d),lambda(l),rho(r),sigma(s),N(n) {
+    T_0 = T_1 = T_2 = 0;
+    for(int i = 1;i <= N;i++){
+      T_0 += t(i);
+      for(int j = 1;j < i;j++){
+        double t_ij = t(i) - t(j);
+        T_1 += t_ij;
+        T_2 = t_ij*t_ij;
+      }
+    }
+  }
 
   void solve(int max_iters, double eps){
     int niters = 0;
@@ -260,7 +261,8 @@ int main(int argc, char** argv){
   double sigma = sigma_0;
   double lambda = lambda_0;
   double sum = N*(N+1);
-  for(int j = 0;j < N;j++) omega.fill((N - j)/sum);
+  omega[0] = .5; // Pr(T_i is a base process event)
+  for(int j = 1;j < N;j++) omega[j] = .5/N-1; // Pr(T_i is a child process event)
   
   // begin EM iteration
   SigmaRho sr(N,omega1,data,lambda,rho,sigma);
