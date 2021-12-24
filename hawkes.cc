@@ -48,32 +48,31 @@ class SigmaRho{
     return (N*(N+1)/2 -lambda*T_0)*r/sum;
   }
 
-  double f(double r){ // compute -dQ_drho + dS_drho
-    double sigma = sigma_comp(r);
-    double Q = 0;
-    double S = sigma*T_2/(2*(N+1));
-    if(r == 0){
+  double f(double rho){ // compute -dQ_drho + dS_drho
+    double sigma = sigma_comp(rho);
+    double dQ_dr = 0;
+    double dS_dr = 0;
+    if(rho == 0){
+      dS_dr = sigma*T_2/(2*(N+1));
       for(int i = 2;i <= N;i++){
-        for(int j = 1;j < i;j++){
-          double t_ij = t(i)-t(j);
-          Q += omega1(i,j)*t_ij;
-        }
+        for(int j = 1;j < i;j++) dQ_dr += omega1(i,j)*(t(i)-t(j));
       }
-      //      cout << format("Q(%f) = %f, S = %f\n",r,Q,S);
-      return S - Q/4;
+      cout << format("dQ_dr(%f) = %f, dS_dr = %f\n",rho,dQ_dr,dS_dr);
+      return dS_dr - dQ_dr/4;
     }
     else {
      for(int i = 2;i <= N;i++){
        for(int j = 1;j < i;j++){
          double t_ij = t(i)-t(j);
-         double e_ij = exp(-r*t_ij);
-         double x = 1 - e_ij - r*t_ij*e_ij;
-         Q += omega1(i,j)*x/(1-e_ij);
-         S += x;
+         double e_ij = exp(-rho*t_ij);
+         double x = 1 - e_ij - rho*t_ij*e_ij;
+         dQ_dr += omega1(i,j)*x/(1-e_ij);
+         dS_dr += x;
        }
      }
-     //     cout << format("Q(%f) = %f, S = %f\n",r,Q,S);
-     return (sigma*S/((N+1)*r*r) -Q/(2*r);
+     cout << format("dQ_dr(%f) = %f, dS_dr = %f\n",rho,dQ_dr,dS_dr);
+     exit(0);
+     return sigma*dS_dr/((N+1)*rho*rho) - dQ_dr/(2*rho);
     }
   }
   
@@ -97,44 +96,46 @@ public:
     double f_min = f(0);
     double f_max = f(.1);
     cout << format("f(0) = %f, f(1) = %f\n",f_min, f_max);
-    double r_min = 0;
-    double r_max = .1;
-    double new_r, new_f;
+    double rho_min = 0;
+    double rho_max = .1;
+    double new_rho, new_f;
 
-    //step1: find an r s.t. f_min & f_max have opp. sign
+    //step1: find a rho s.t. f_min & f_max have opp. sign
     while(niters++ < max_iters){
       if(f_min*f_max <= 0) break;
-      cout << format("f(%f) = %f\n",r_max,f(r_max));
-      r_max += .1;
-      f_max = f(r_max);
+      cout << format("f(%f) = %f\n",rho_max,f(rho_max));
+      rho_max += .1;
+      f_max = f(rho_max);
     }
     if(f_min*f_max > 0){
-      cerr << "failed to find r_max after "<<niters<<" iterations."<<endl;
+      cerr << "failed to find rho_max after "<<niters<<" iterations."<<endl;
       output("rho_test.plt");
       exit(1);
     }
-    else cout << "rmax = "<<r_max<<", f_max = "<<f_max<<endl;
+    else cout << "rho_max = "<<rho_max<<", f_max = "<<f_max<<endl;
         
     niters = 0;
-    while(niters++ < max_iters && fabs(r_min-r_max) > eps){
-      new_r = (r_min+r_max)/2;
-      new_f = f(new_r);
+    while(niters++ < max_iters && fabs(rho_min-rho_max) > eps){
+      new_rho = (rho_min+rho_max)/2;
+      new_f = f(new_rho);
       //      cout << format("sr_iteration %d: r: %f f: %f\n",niters,new_r,new_f);
       if(f_min*new_f > 0) {
         f_min = new_f;
-        r_min = new_r;
+        rho_min = new_rho;
       }
       else{
         f_max = new_f;
-        r_max = new_r;
+        rho_max = new_rho;
       }
     }
     if(niters >= max_iters){
       cerr << "SigmaRho.solve did not converge after "<<niters<<
-        " iterations with error = "<<fabs(r_min-r_max)<<endl;
+        " iterations with error = "<<fabs(rho_min-rho_max)<<endl;
       exit(1);
     }
-    rho = new_r;
+    output("rho_test.plt");
+    exit(0);
+    rho = new_rho;
     sigma = sigma_comp(rho);
   }
 
@@ -144,9 +145,9 @@ public:
       cerr << "Can't open "<<file<<endl;
       exit(1);
     }
-    double r_temp;
-    for(r_temp = 0; r_temp < max_rho;r_temp += .1){
-      out << r_temp<<" "<<f(r_temp)<<endl;
+    double rho_temp;
+    for(rho_temp = 0; rho_temp < max_rho;rho_temp += .1){
+      out << rho_temp<<" "<<f(rho_temp)<<endl;
     }
     out.close();
   }
@@ -262,7 +263,7 @@ int main(int argc, char** argv){
   double lambda = lambda_0;
   double sum = N*(N+1);
   omega[0] = .5; // Pr(T_i is a base process event)
-  for(int j = 1;j < N;j++) omega[j] = .5/N-1; // Pr(T_i is a child process event)
+  for(int j = 1;j < N;j++) omega[j] = .5/(N-1); // Pr(T_i is a child process event)
   
   // begin EM iteration
   SigmaRho sr(N,omega1,data,lambda,rho,sigma);
@@ -320,7 +321,7 @@ int main(int argc, char** argv){
       lambda = omega[0]/data[N].time;//Note: t[N] = 1. This is for clarity
       cout << "update for lambda: "<<lambda<<endl;
       sr.solve(sr_iters,sr_err); // updates sigma and rho
-      cout << format("at iteration %d, lambda = %f, sigma = %f, rho = %f\n",
+      cout << format("at iteration %d, lambda = %f, sigma = %f, rho = %.4e\n",
                      niters,lambda,sigma,rho);
     } // end re-estimation
     niters++;
