@@ -457,8 +457,8 @@ and therefore
 
 Next, we define
 \begin{align*}
-  W'_0 :&= \sum_{i=1}^N\omega'_{i0},\quad  W'_1 := \sum_{i>j>0}\omega'_{ij},\quad T_0 := \sum_{i=1}^Nt_i,\\
-  T_1 :&= \sum_{i>j>0}t_{ij},\quad\text{and}\quad T_2 := \sum_{i>j>0}t_{ij}^2.
+  W'_0 :&= \sum_{i=1}^N\omega'_{i0},\quad  W'_1 := \sum_{i>j>0}\omega'_{ij},\quad T_0 := \sum_{i=1}^N\omega'_{i0}t_i,\\
+  T_1 :&= \sum_{i>j>0}\omega'_{ij}t_{ij},\quad\text{and}\quad T_2 := \sum_{i>j>0}\omega'_{ij}t_{ij}^2.
 \end{align*}
 
 
@@ -481,7 +481,7 @@ And finally, the chain rule yields
   \frac{\partial\k_{ij}}{\partial\rho}\\
 &= -\sum_{i>j>0}\frac{\omega'_{ij}}{2\k_{ij}}\frac{\sigma}{\rho}\left(\frac{1-e^{-\rho{t_{tj}}}}{\rho} - t_{ij}e^{-\rho{t_{ij}}}\right), \\
 &= -\frac{1}{2}\sum_{i>j>0}\omega'_{ij}\left(\frac{1}{\rho} - t_{ij}\frac{e^{-\rho{t_{ij}}}}{1-e^{-\rho t_{ij}}}\right)\\
-%&= -\frac{1}{2\rho}\sum_{i>j>0}\omega'_{ij}\left(\frac{1}{\rho} + t_{ij}\frac{1}{1-e^{\rho t_{ij}}}\right).
+&= -\frac{1}{2\rho}\sum_{i>j>0}\frac{\omega'_{ij}}{1-e^{-\rho t_{ij}}}\left(1-e^{-\rho t_{ij}} - \rho t_{ij}e^{-\rho t_{ij}}\right).
 \end{split}
 \end{equation}
 Furthermore, using \eqref{dQ_dk(0)} and \eqref{dk_drho(0)}, we have
@@ -493,32 +493,34 @@ Furthermore, using \eqref{dQ_dk(0)} and \eqref{dk_drho(0)}, we have
 
 We can now solve for $\lambda_0$, $\sigma$, and $\rho$.  However, we
 need to enforce an obvious constraint.  Namely,
-for $i = 1,2,\dots,N$ the total number of expected arrivals at time $t_i$ is 
+for $i = 1,2,\dots,N$ the number of expected arrivals up to time $t_i$ from process $\P_j$ is $\k_{ij}$, and
+the probability that the $i^{th}$ arrival is in fact from $\P_j$ is $\omega'_{ij}$.  Thus, the total number
+of expected arrivals up to time $t_i$ is
 $$
-\sum_{j<i}\k_{ij},
+\sum_{j<i}\omega'_{ij}\k_{ij},
 $$
 while the actual number is of course $i$.  So we might want to enforce
 the set of $N$ constraints
 $$
-\sum_{j < i}\k_{ij} - i = 0 \quad(1\le i\le N).
+\sum_{j < i}\omega'_{ij}\k_{ij} - i = 0 \quad(1\le i\le N).
 $$
 However, this idea turns out to be unwieldly.  Instead, we sum over $i$, putting
 \begin{equation}\label{constraint}
-S := \sum_{i>j}\k_{ij} - N(N+1)/2,
+S := \sum_{i>j}\omega'_{ij}\k_{ij} - N(N+1)/2,
 \end{equation}
 and maximize $\tilde{Q}$ subject to the single constraint $S = 0$.
 Then using \eqref{dk_dparams} and \eqref{constraint} we get
 \begin{equation} \label{dS_dparams}
   \begin{split}
-    \frac{\partial{S}}{\partial\lambda_0} &= \sum_{i=1}^N\frac{\partial \k_{i0}}{\partial\lambda_0} = T_0,\\
-    \frac{\partial{S}}{\partial\sigma} &= \frac{1}{\sigma}\sum_{i>j>0}\k_{ij} = \frac{1}{\sigma}(N(N+1)/2 - \lambda_0T_0),\\
-    \frac{\partial{S}}{\partial\rho} &= -\frac{\sigma}{\rho^2}\sum_{i>j>0}\left(1-e^{-\rho t_{ij}}-\rho t_{ij}e^{-\rho t_{ij}}\right).
+    \frac{\partial{S}}{\partial\lambda_0} &= \sum_{i=1}^N\omega'_{i0}\frac{\partial \k_{i0}}{\partial\lambda_0} = T_0,\\
+    \frac{\partial{S}}{\partial\sigma} &= \frac{1}{\sigma}\sum_{i>j>0}\omega'_{ij}\k_{ij} = \frac{1}{\sigma}(N(N+1)/2 - \lambda_0T_0),\\
+    \frac{\partial{S}}{\partial\rho} &= -\frac{\sigma}{\rho^2}\sum_{i>j>0}\omega'_{ij}\left(1-e^{-\rho t_{ij}}-\rho t_{ij}e^{-\rho t_{ij}}\right).
   \end{split}
 \end{equation}
 Moreover, \eqref{dk_drho(0)} implies that
 \begin{equation}\label{dS_drho(0)}
-  \left.\frac{\partial S}{\partial\rho}\right|_{\rho=0} = \sum_{i>j>0}\left.\frac{\partial\k_{ij}}{\partial\rho}\right|_{\rho=0}
-  = -\frac{\sigma}{2}\sum_{i>j>0}t_{ij}^2 = -\frac{\sigma}{2}T_2.
+  \left.\frac{\partial S}{\partial\rho}\right|_{\rho=0} = \sum_{i>j>0}\left.\omega'_{ij}\frac{\partial\k_{ij}}{\partial\rho}\right|_{\rho=0}
+  = -\frac{\sigma}{2}\sum_{i>j>0}\omega'_{ij}t_{ij}^2 = -\frac{\sigma}{2}T_2.
 \end{equation}
 
 

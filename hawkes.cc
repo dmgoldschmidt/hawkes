@@ -52,13 +52,14 @@ class SigmaRho{
     double sigma = sigma_comp(rho);
     double dQ_dr = 0;
     double dS_dr = 0;
+    double nu = -1/(N+1);
     if(rho == 0){
-      dS_dr = sigma*T_2/(2*(N+1));
+      dS_dr = -sigma*T_2/2;
       for(int i = 2;i <= N;i++){
         for(int j = 1;j < i;j++) dQ_dr += omega1(i,j)*(t(i)-t(j));
       }
       cout << format("dQ_dr(%f) = %f, dS_dr = %f\n",rho,dQ_dr,dS_dr);
-      return dS_dr - dQ_dr/4;
+      return nu*dS_dr - dQ_dr/4;  // \nu = -1/(N+1)
     }
     else {
      for(int i = 2;i <= N;i++){
@@ -66,13 +67,13 @@ class SigmaRho{
          double t_ij = t(i)-t(j);
          double e_ij = exp(-rho*t_ij);
          double x = 1 - e_ij - rho*t_ij*e_ij;
-         dQ_dr += omega1(i,j)*x/(1-e_ij);
-         dS_dr += x;
+         dQ_dr -= omega1(i,j)*x/(1-e_ij); // both partials are negative.  But so is nu!
+         dS_dr -= x;
        }
      }
      cout << format("dQ_dr(%f) = %f, dS_dr = %f\n",rho,dQ_dr,dS_dr);
      exit(0);
-     return sigma*dS_dr/((N+1)*rho*rho) - dQ_dr/(2*rho);
+     return nu*sigma*dS_dr/(rho*rho) + dQ_dr/(2*rho);
     }
   }
   
