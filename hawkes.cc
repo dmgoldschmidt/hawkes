@@ -34,7 +34,8 @@ class SigmaRho{
   
   double& rho; // initial values and outputs
   double& sigma;
-
+  double dQ_drho;
+  double dS_drho;
   int N;
   
   double t(int i){return data[i].time;}
@@ -59,31 +60,59 @@ class SigmaRho{
 
   double f(double r){ // compute -dQ_drho + dS_drho
     double sigma = sigma_comp(r);
-    double Q = 0;
-    double S = 0;
+    dQ_drho = 0;
+    dS_drho = 0;
     if(r == 0){
       for(int i = 2;i <= N;i++){
         for(int j = 1;j < i;j++){
           double t_ij = t(i)-t(j);
-          Q += omega1(i,j)*t_ij;
-          if(i == N) S += t_ij*t_ij;
+          dQ_drho += omega1(i,j)*t_ij;
+          if(i == N) dS_drho += t_ij*t_ij;
         }
       }
-      //      cout << format("Q(%f) = %f, S = %f\n",r,Q,S);
-      return (sigma*S - Q)/4;
+      dQ_drho /= -4;
+      dS_drho = sigma*dS_drho/2;
+      return dS_drho/2 + dQ_drho;
     }
     else {
      for(int i = 2;i <= N;i++){
        for(int j = 1;j < i;j++){
          double t_ij = t(i)-t(j);
          double e_ij = exp(-r*t_ij);
-         Q += omega1(i,j)*(1/r - t_ij*e_ij/(1-e_ij));
-         if(i == N) S += (1-e_ij)/r - t_ij*e_ij;
+         dQ_drho += omega1(i,j)*(1/r - t_ij*e_ij/(1-e_ij));
+         if(i == N) dS_drho += (1-e_ij)/r - t_ij*e_ij;
        }
      }
-     //     cout << format("Q(%f) = %f, S = %f\n",r,Q,S);
-     return (sigma*S/r - Q)/2;
+     dQ_drho /= -2;
+     dS_drho = sigma/rho*dS_drho;
+     return dS_drho/2 + dQ_drho;
     }
+  }
+
+  double real_Q(double r){
+    double sum = 0;
+    double k;
+    double s = sigma_comp(r);
+    for(int i = 2;i <= N;i++){
+      for(int j = 1;j < i;j++){
+        if(r == 0) k = s*(t(i)-t(j));
+        else k = (s/r)*(1-exp(-r*(t(i)-t(j))));
+        sum += omega1(i,j)*(k*log(k) - k - gammln(k));
+      }
+    }
+    return sum;
+  }
+  
+  double Q_comp(double r){
+    double sum = 0;
+    double s = sigma_comp(r);
+    for(int i = 2;i < N;i++){
+      for(int j = 1;j < i;j++){
+        if(r == 0) sum += omega1(i,j)*log(s*(t(i)-t(j)));
+        else sum += omega1(i,j)*log((s/r)*(1-exp(-r*(t(i)-t(j)))));
+      }
+    }
+    return sum/2;
   }
   
 public:
@@ -101,6 +130,9 @@ public:
     double new_r, new_f;
 
     //step1: find an r s.t. f_min & f_max have opp. sign
+    output("rho_test.plt");
+    exit(0);
+    
     while(niters++ < max_iters){
       if(f_min*f_max <= 0) break;
       cout << format("f(%f) = %f\n",r_max,f(r_max));
@@ -137,15 +169,17 @@ public:
     sigma = sigma_comp(rho);
   }
 
-  void output(char* file, double max_rho = 100){
+  void output(char* file, double max_rho = 10){
     ofstream out(file);
     if(!out.good()){
       cerr << "Can't open "<<file<<endl;
       exit(1);
     }
     double r_temp;
-    for(r_temp = 0; r_temp < max_rho;r_temp += .1){
-      out << r_temp<<" "<<f(r_temp)<<endl;
+    out << format("   rho\t   dQ_drho  dS_drho  f(rho)  Q(rho)    real_Q\n");
+    for(r_temp = 0; r_temp < max_rho;r_temp += .01){
+      double f1 = f(r_temp);
+      out << format("%8.4f %8.4f %8.4f %8.4f %8.4f %8.4f\n", r_temp, dQ_drho, dS_drho, f1, Q_comp(r_temp), real_Q(r_temp));
     }
     out.close();
   }
