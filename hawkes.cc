@@ -169,7 +169,7 @@ public:
     sigma = sigma_comp(rho);
   }
 
-  void output(char* file, double max_rho = 10){
+  void output(char* file, double max_rho = 200){
     ofstream out(file);
     if(!out.good()){
       cerr << "Can't open "<<file<<endl;
@@ -177,7 +177,7 @@ public:
     }
     double r_temp;
     out << format("   rho\t   dQ_drho  dS_drho  f(rho)  Q(rho)    real_Q\n");
-    for(r_temp = 0; r_temp < max_rho;r_temp += .01){
+    for(r_temp = 0; r_temp < max_rho;r_temp += 1){
       double f1 = f(r_temp);
       out << format("%8.4f %8.4f %8.4f %8.4f %8.4f %8.4f\n", r_temp, dQ_drho, dS_drho, f1, Q_comp(r_temp), real_Q(r_temp));
     }
