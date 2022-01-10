@@ -32,16 +32,14 @@ class SigmaRho{
   Array<HawkesPoint>& data;
   double lambda;
   
-  double& rho; // initial values and outputs
-  double& sigma;
-  double dQ_drho;
-  double dS_drho;
+  double& rho; // initial values and outputs. Set at construction
+  double& _sigma;
   int N;
   
   double t(int i){return data[i].time;}
 
-  double sigma_comp(double r){
-    if(r == 0) {
+  double sigma(double rho){
+    if(rho == 0) {
       double sum = 0;
       for(int j = 1;j < N;j++){
         sum += 1 - t(j);
@@ -53,46 +51,47 @@ class SigmaRho{
       return (N-lambda)/sum;
     } // r > 0
     double sum = 0; // r > 0 here
-    for(int j = 1;j < N;j++)sum += 1-exp(-r*(1-t(j)));
-    return (N-lambda)*r/sum;
+    for(int j = 1;j < N;j++)sum += 1-exp(-rho*(1-t(j)));
+    return (N-lambda)*rho/sum;
   }
 
+  double dsigma(double rho, double _sigma){
+    double S_0 = 0;
+    double dS_0 = 0;
+    for(int j = 1;j < N;j++){
+      double t_Nj = t(N) - t(j);
+      double e_Nj = exp(-rho*t_Nj);
+      S_0 += 1-e_Nj;
+      dS_0 += t_Nj*e_Nj;
+    }
+    return ((N-lambda)-_sigma*dS_0)/S_0;
+  }
+      
+  double dQ(double rho){ // compute dQ_drho 
+    if(rho == 0){
+      cerr << "dQ: rho = 0. Bailing out\n";
+      exit(1);
+    }
+    double _sigma = sigma(rho);
 
-  double f(double r){ // compute -dQ_drho + dS_drho
-    double sigma = sigma_comp(r);
-    dQ_drho = 0;
-    dS_drho = 0;
-    if(r == 0){
-      for(int i = 2;i <= N;i++){
-        for(int j = 1;j < i;j++){
-          double t_ij = t(i)-t(j);
-          dQ_drho += omega1(i,j)*t_ij;
-          if(i == N) dS_drho += t_ij*t_ij;
-        }
+    double _dsigma_drho = dsigma(rho,_sigma);
+    double dQ_drho = 0;
+    for(int i = 2;i <= N;i++){
+      for(int j = 1;j < i;j++){
+        double t_ij = t(i)-t(j);
+        double e_ij = exp(-rho*t_ij);
+        double k_hat = _sigma/rho*(1-e_ij);
+        dQ_drho += (omega1(i,j)/(2*k_hat))*(_dsigma_drho - k_hat + _sigma*t_ij*e_ij);
       }
-      dQ_drho /= -4;
-      dS_drho = sigma*dS_drho/2;
-      return dS_drho/2 + dQ_drho;
     }
-    else {
-     for(int i = 2;i <= N;i++){
-       for(int j = 1;j < i;j++){
-         double t_ij = t(i)-t(j);
-         double e_ij = exp(-r*t_ij);
-         dQ_drho += omega1(i,j)*(1/r - t_ij*e_ij/(1-e_ij));
-         if(i == N) dS_drho += (1-e_ij)/r - t_ij*e_ij;
-       }
-     }
-     dQ_drho /= -2;
-     dS_drho = sigma/rho*dS_drho;
-     return dS_drho/2 + dQ_drho;
-    }
+    dQ_drho /= rho;
+    return dQ_drho; 
   }
 
-  double real_Q(double r){
+  double real_Q(double r){ // testing only
     double sum = 0;
     double k;
-    double s = sigma_comp(r);
+    double s = sigma(r);
     for(int i = 2;i <= N;i++){
       for(int j = 1;j < i;j++){
         if(r == 0) k = s*(t(i)-t(j));
@@ -103,9 +102,9 @@ class SigmaRho{
     return sum;
   }
   
-  double Q_comp(double r){
+  double Q_comp(double r){ // approximate version of real_Q
     double sum = 0;
-    double s = sigma_comp(r);
+    double s = sigma(r);
     for(int i = 2;i < N;i++){
       for(int j = 1;j < i;j++){
         if(r == 0) sum += omega1(i,j)*log(s*(t(i)-t(j)));
@@ -118,15 +117,15 @@ class SigmaRho{
 public:
   SigmaRho(int n, Matrix<double>& om, Array<HawkesPoint>& d,
            double l, double& r, double& s) :
-    omega1(om),data(d),lambda(l),rho(r),sigma(s),N(n) {}
+    omega1(om),data(d),lambda(l),rho(r),_sigma(s),N(n) {}
 
   void solve(int max_iters, double eps){
     int niters = 0;
-    double f_min = f(0);
-    double f_max = f(.1);
-    cout << format("f(0) = %f, f(1) = %f\n",f_min, f_max);
+    double f_min = dQ(.001);
+    double f_max = dQ(1);
+    cout << format("f(.001) = %f, f(1) = %f\n",f_min, f_max);
     double r_min = 0;
-    double r_max = .1;
+    double r_max = 1;
     double new_r, new_f;
 
     //step1: find an r s.t. f_min & f_max have opp. sign
@@ -135,9 +134,9 @@ public:
     
     while(niters++ < max_iters){
       if(f_min*f_max <= 0) break;
-      cout << format("f(%f) = %f\n",r_max,f(r_max));
+      cout << format("dQ(%f) = %f\n",r_max,dQ(r_max));
       r_max += .1;
-      f_max = f(r_max);
+      f_max = dQ(r_max);
     }
     if(f_min*f_max > 0){
       cerr << "failed to find r_max after "<<niters<<" iterations."<<endl;
@@ -149,7 +148,7 @@ public:
     niters = 0;
     while(niters++ < max_iters && fabs(r_min-r_max) > eps){
       new_r = (r_min+r_max)/2;
-      new_f = f(new_r);
+      new_f = dQ(new_r);
       //      cout << format("sr_iteration %d: r: %f f: %f\n",niters,new_r,new_f);
       if(f_min*new_f > 0) {
         f_min = new_f;
@@ -166,20 +165,20 @@ public:
       exit(1);
     }
     rho = new_r;
-    sigma = sigma_comp(rho);
+    _sigma = sigma(rho);
   }
 
-  void output(char* file, double max_rho = 200){
+  void output(char* file, double max_rho = 10){
     ofstream out(file);
     if(!out.good()){
       cerr << "Can't open "<<file<<endl;
       exit(1);
     }
     double r_temp;
-    out << format("   rho\t   dQ_drho  dS_drho  f(rho)  Q(rho)    real_Q\n");
-    for(r_temp = 0; r_temp < max_rho;r_temp += 1){
-      double f1 = f(r_temp);
-      out << format("%8.4f %8.4f %8.4f %8.4f %8.4f %8.4f\n", r_temp, dQ_drho, dS_drho, f1, Q_comp(r_temp), real_Q(r_temp));
+    out << "omega1:\n"<<omega1;
+    out << format("   rho\t   dQ_drho  Q(rho)    real_Q\n");
+    for(r_temp = .1; r_temp < max_rho;r_temp += .1){
+      out << format("%8.4f %8.4f %8.4f %8.4f\n", r_temp, dQ(r_temp), Q_comp(r_temp), real_Q(r_temp));
     }
     out.close();
   }
