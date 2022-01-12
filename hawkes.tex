@@ -547,20 +547,14 @@ So differentiating both sides:
 \end{align*}
 It follows that
 \begin{equation}\label{dk_hat_drho}
-  \begin{split}
-    \frac{\partial\k_{ij}}{\partial\rho} &= \left(\frac{\rho\sigma'(\rho) - \sigma(\rho)}{\rho^2}(1-e^{-\rho t_{ij}}) +
-    \frac{\sigma(\rho)}{\rho}t_{ij}e^{-\rho t_{ij}}\right) \\
-    &= \frac{1}{\rho}(\sigma'(\rho)-\k_{ij} + \sigma(\rho)t_{ij}e^{-\rho t_{ij}}).
-  \end{split}
+    \frac{\partial\k_{ij}}{\partial\rho} = \left(\frac{\rho\sigma'(\rho) - \sigma(\rho)}{\rho^2}(1-e^{-\rho t_{ij}}) +
+    \frac{\sigma(\rho)}{\rho}t_{ij}e^{-\rho t_{ij}}\right).
 \end{equation}
 
 And finally, the chain rule yields
 \begin{equation}\label{dQ_drho}
-\begin{split}
-  \frac{\partial\tilde{Q}}{\partial\rho} &= \sum_{i>j>0}\frac{\partial\tilde{Q}}{\partial\k_{ij}}\cdot
-  \frac{\partial\k_{ij}}{\partial\rho}\\
-&= \sum_{i>j>0}\frac{\omega'_{ij}}{2\rho\k_{ij}}(\sigma'(\rho)-\k_{ij} + \sigma(\rho)t_{ij}e^{-\rho t_{ij}}).
-\end{split}
+  \frac{\partial\tilde{Q}}{\partial\rho} = \sum_{i>j>0}\frac{\partial\tilde{Q}}{\partial\k_{ij}}\cdot
+  \frac{\partial\k_{ij}}{\partial\rho} =  \sum_{i>j>0}\frac{\omega'_{ij}}{2\k_{ij}}\cdot\frac{\partial\k_{ij}}{\partial\rho}.
 \end{equation}
 
 

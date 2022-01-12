@@ -27,6 +27,7 @@ function pretty_print(mat::Matrix{Float64}, digits = 5)
 end
 
 mutable struct Parameters
+  N::Int64
   lambda::Float64
   rho::Float64
   sigma::Float64
@@ -49,7 +50,27 @@ function Base.:<(x::HawkesPoint,y::HawkesPoint)
   return x.time < y.time
 end
 
-function Omegas(omega1,p,t) # input old omega and t, output new omega,omega1
+function dsigma(p::Parameters,t::Vector{Float64})
+  S0 = 0.0
+  dS0 = 0.0
+  for j in 1:p.N-1
+    t_Nj = t[p.N] - t[j]
+    e_Nj = exp(-p.rho*t_Nj)
+    S0 += 1-e_Nj
+    dS0 += t_Nj*e_Nj;
+  end
+  return ((p.N - p.lambda) - p.sigma*dS0)/S0
+end
+
+function sigma(p::Parameters,t::Vector{Float64})
+  sum = 0.0
+  for j in 1:p.N-1
+    sum += 1-exp(-p.rho*(t[p.N]-t[j]))
+  end
+  p.sigma = (p.N - p.lambda)*p.rho/sum
+end
+
+function Omegas(omega1::Matrix{Float64},p::Parameters,t::Vector{Float64}) # input old p.omega and t, output omega1, new p.omega
   (nrows,ncols) = size(omega1)
   score = 0.0
   omega1[1,1] = 1.0
@@ -74,31 +95,28 @@ function Omegas(omega1,p,t) # input old omega and t, output new omega,omega1
   return score
 end
 
-
-  
-function dsigma(rho,sig,t,lambda)
-  S0 = 0.0
-  dS0 = 0.0
-  for j in 1:99
-    t_Nj = t[100] - t[j]
-    e_Nj = exp(-rho*t_Nj)
-    S0 += 1-e_Nj
-    dS0 += t_Nj*e_Nj;
+function update_params(p::Parameters, omega1::Matrix{Float64}, omega::Vector{Float64}, t::Vector{Float64})
+  (nrows,ncols) = size(omega1)
+  p.lambda = nrows*omega[1] # this is \sum_{i=1}^N omega1[i,j]
+  for p.rho = .1:.5:10
+    sigma(p,t)
+    ds = dsigma(p,t)
+    q = 0.0
+    dq = 0.0
+    for i = 1:nrows
+      for j = 2:i-1
+        t_ij = t[i] - t[j]
+        e_ij = exp(-p.rho*t_ij)
+        khat = p.sigma/p.rho*(1-e_ij)
+        dk = (p.rho*ds - p.sigma)/(p.rho*p.rho)*(1-e_ij) + p.sigma/p.rho*t_ij*e_ij
+        q += omega1[i,j]*log(khat)/2
+        dq += omega1[i,j]/(2*khat)*dk
+      end
+    end
+    println("rho: $(p.rho) sigma: $(p.sigma) ds: $ds q: $q dq: $(dq)")
   end
-  return ((100-lambda) - sig*dS0)/S0
+  exit(0)
 end
-
-function sigma(rho,t,lambda)
-  sum = 0.0
-  N = 100
-  
-  for j in 1:99
-    sum += 1-exp(-rho*(t[N]-t[j]))
-#    println("rho: $rho t[N]-t[$j]: $(t[N]-t[j]) sum($j) = $sum")
-  end
-  return (N-lambda)*rho/sum
-end
-
 
 function main(cmd_line = ARGS)    
   defaults = Dict{String,Any}(
@@ -150,7 +168,6 @@ function main(cmd_line = ARGS)
   end
   tot_time = data[ndata].time - t_0
   for i in 1:ndata
-      println
     t[i] = (data[i].time - t_0)/tot_time # normalize arrival times to [0,1]
     if t[i] < 0 || (i > 1 && t[i] <= t[i-1])
       println(stderr, "negative arrival time or time(s) out of sequence at t[$i].  Bailing out.")
@@ -160,7 +177,7 @@ function main(cmd_line = ARGS)
   println("normalized arrival times:\n$t")
   omega = [Float64(ndata+1-j) for j in 1:ndata]
   omega ./= sum(omega)
-  p0 = Parameters(lambda_0,rho_0,sigma_0,omega)
+  params = Parameters(ndata,lambda_0,rho_0,sigma_0,omega)
   for (key,val) in children
     println("mark $(key): children: $(transpose(val))")
   end
@@ -168,11 +185,22 @@ function main(cmd_line = ARGS)
 
   omega1 = Matrix{Float64}(undef,ndata,ndata)
   omega = Vector{Float64}(undef,ndata)
+  
   #OK, begin EM iteration
-  score = Omegas(omega1,p0,t)
-  rnd = my_round(5)
-  println(pretty_print(omega1))
-  println("omega: $(map(rnd,p0.omega))\n score: $score")
+  for niters in 1:max_iters
+    score = Omegas(omega1,params,t) #= compute posterior probability matrix omega1
+                                   and state probability vector params.omega =# 
+    rnd = my_round(5)
+    println(pretty_print(omega1))
+    println("omega: $(map(rnd,params.omega))\n log likelihood at iteration $niters: $score")
+
+    if niters < max_iters # re-estimate params
+      println("Begin iteration $niters")
+      params.lambda = params.omega[1]
+      update_params(params,omega1,omega,t) # update lambda, rho, and sigma(rho)
+      println("updated parameters: $(params)")
+    end
+  end
 end
 
 #   niters = 0
