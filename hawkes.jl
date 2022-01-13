@@ -95,27 +95,47 @@ function Omegas(omega1::Matrix{Float64},p::Parameters,t::Vector{Float64}) # inpu
   return score
 end
 
-function update_params(p::Parameters, omega1::Matrix{Float64}, omega::Vector{Float64}, t::Vector{Float64})
-  (nrows,ncols) = size(omega1)
-  p.lambda = nrows*omega[1] # this is \sum_{i=1}^N omega1[i,j]
-  for p.rho = .1:.5:10
-    sigma(p,t)
-    ds = dsigma(p,t)
-    q = 0.0
-    dq = 0.0
-    for i = 1:nrows
-      for j = 2:i-1
-        t_ij = t[i] - t[j]
-        e_ij = exp(-p.rho*t_ij)
-        khat = p.sigma/p.rho*(1-e_ij)
-        dk = (p.rho*ds - p.sigma)/(p.rho*p.rho)*(1-e_ij) + p.sigma/p.rho*t_ij*e_ij
-        q += omega1[i,j]*log(khat)/2
-        dq += omega1[i,j]/(2*khat)*dk
+function dq_comp(p::Parameters, omega1::Matrix{Float64}, t::Vector{Float64})
+  sigma(p,t)      #compute sigma(rho)
+  ds = dsigma(p,t)# and sigma'(rho)
+  q = dq = 0
+  for i = 1:p.N
+    for j = 2:i-1
+      t_ij = t[i] - t[j]
+      e_ij = exp(-p.rho*t_ij)
+      khat = p.sigma/p.rho*(1-e_ij)
+      dk = (p.rho*ds - p.sigma)/(p.rho*p.rho)*(1-e_ij) + p.sigma/p.rho*t_ij*e_ij
+      q += omega1[i,j]*log(khat)/2
+      dq += omega1[i,j]/(2*khat)*dk
+    end
+  end
+  return (dq,q)
+end
+
+function update_params(p::Parameters, omega1::Matrix{Float64}, t::Vector{Float64}, rho_max::Int64 = 100, eps::Float64 = 1.0e-5)
+  p.lambda = p.N*p.omega[1] #  = \sum_{i=1}^N omega1[i,1]
+  (dq,q) = dq_comp(p,omega1,t)
+  rho1 = p.rho
+  while p.rho <= rho_max && dq > 0
+    rho1 = p.rho # old value
+    p.rho += 10 # new value
+    (dq,q) = dq_comp(p,omega1,t)
+  end
+  if dq < 0 # either dq went from + to - or dq was < 0 initially. If we hit rho_max with dq >= 0, we exit
+    rho = p.rho # dq(rho) < 0 and dq(rho1) > 0 
+    while abs(rho - rho1) > eps 
+      p.rho = (rho+rho1)/2
+      (dq,q) = dq_comp(p,omega1,t) # compute dq at the mid-point
+      if dq == 0; break; end
+      if dq < 0
+        rho = p.rho
+      else
+        rho1 = p.rho
       end
     end
-    println("rho: $(p.rho) sigma: $(p.sigma) ds: $ds q: $q dq: $(dq)")
   end
-  exit(0)
+#  println("rho: $(p.rho) sigma: $(p.sigma) q: $q dq: $(dq)")
+#  exit(0)
 end
 
 function main(cmd_line = ARGS)    
@@ -197,7 +217,7 @@ function main(cmd_line = ARGS)
     if niters < max_iters # re-estimate params
       println("Begin iteration $niters")
       params.lambda = params.omega[1]
-      update_params(params,omega1,omega,t) # update lambda, rho, and sigma(rho)
+      update_params(params,omega1,t) # update lambda, rho, and sigma(rho)
       println("updated parameters: $(params)")
     end
   end
