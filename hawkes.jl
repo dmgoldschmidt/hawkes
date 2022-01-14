@@ -35,7 +35,8 @@ mutable struct Parameters
 end
 
 function Base.println(p::Parameters)
-  println("Parameters:\nlambda: $(p.lambda) rho: $(p.rho) sigma: $(p.sigma) \nomega: $(p.omega)")
+  rnd = my_round(3)
+  println("Parameters:\nlambda: $(rnd(p.lambda)) rho: $(rnd(p.rho)) sigma: $(rnd(p.sigma)) \nomega: $(pretty_print(p.omega))")
 end
 
 mutable struct HawkesPoint
@@ -73,6 +74,7 @@ end
 function Omegas(omega1::Matrix{Float64},p::Parameters,t::Vector{Float64}) # input old p.omega and t, output omega1, new p.omega
   (nrows,ncols) = size(omega1)
   score = 0.0
+  omega1 .= 0.0
   omega1[1,1] = 1.0
   for i in 2:nrows
     for j in 1:i
@@ -91,7 +93,7 @@ function Omegas(omega1::Matrix{Float64},p::Parameters,t::Vector{Float64}) # inpu
   end
   sums = sum(omega1,dims=1) # get column sums
   for j in 1:ncols; p.omega[j] = sums[j]/nrows; end
-  println("column sums: $(p.omega)")
+#  println("column sums: $(p.omega)")
   return score
 end
 
@@ -142,13 +144,13 @@ function main(cmd_line = ARGS)
   defaults = Dict{String,Any}(
     "seed" => 12345,
     "in_file" => "hawkes_test_data.txt",
-    "ndata" => 5,
+    "ndata" => 10,
     "out_file"=>"",
     "rho_0" => 1, 
     "sigma_0" => 2, # initial child process rate
     "lambda_0" => .1,
     "t_0" => 0.0,
-    "max_iters" => 3,
+    "max_iters" => 5,
   )
   cl = get_vals(defaults,cmd_line) # update defaults with command line values if they are specified
 #  println("parameters: $defaults")
@@ -194,14 +196,15 @@ function main(cmd_line = ARGS)
       exit(1)
     end
   end
-  println("normalized arrival times:\n$t")
+  rnd = my_round(3)
+  println("normalized arrival times:\n$(map(rnd,t))")
   omega = [Float64(ndata+1-j) for j in 1:ndata]
   omega ./= sum(omega)
   params = Parameters(ndata,lambda_0,rho_0,sigma_0,omega)
   for (key,val) in children
     println("mark $(key): children: $(transpose(val))")
   end
-  println("omega: $omega")
+  println("omega: $(map(rnd,omega))")
 
   omega1 = Matrix{Float64}(undef,ndata,ndata)
   omega = Vector{Float64}(undef,ndata)
@@ -210,15 +213,17 @@ function main(cmd_line = ARGS)
   for niters in 1:max_iters
     score = Omegas(omega1,params,t) #= compute posterior probability matrix omega1
                                    and state probability vector params.omega =# 
-    rnd = my_round(5)
-    println(pretty_print(omega1))
-    println("omega: $(map(rnd,params.omega))\n log likelihood at iteration $niters: $score")
+    rnd = my_round(3)
+#    println(pretty_print(map(rnd,omega1)))
+    println("log likelihood at iteration $niters: $score")
 
     if niters < max_iters # re-estimate params
       println("Begin iteration $niters")
       params.lambda = params.omega[1]
       update_params(params,omega1,t) # update lambda, rho, and sigma(rho)
-      println("updated parameters: $(params)")
+      println("updated parameters: lambda: $(rnd(params.lambda)) rho: $(rnd(params.rho)) sigma: $(rnd(params.sigma))")
+#      rnd = my_round(5)
+      println("omega: $(map(rnd,params.omega))")
     end
   end
 end
@@ -347,6 +352,7 @@ end
 
 
 # execution begins here
+
 if occursin("hawkes.jl",PROGRAM_FILE)
   #was hawkes.jl called by a command?
   println("calling main with ARGS = $ARGS")
