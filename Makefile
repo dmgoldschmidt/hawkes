@@ -81,11 +81,13 @@ score_fts_flowsets: score_fts_flowsets.cc GetOpt.o util.o Array.h Matrix.h Gauss
 ref_histogram: ref_histogram.cc util.o Awk.o Array.h GetOpt.o
 	$(CC) $(CFLAGS) -o ref_histogram ref_histogram.cc GetOpt.o util.o Awk.o -lz
 hawkes_model: hawkes.cc matrix.o util.o Awk.o GetOpt.o stats.h Dict.h Array.h Matrix.h
-	$(CC) $(CFLAGS) -o hawkes_model hawkes.cc matrix.o util.o Awk.o GetOpt.o libcrc/lib/libcrc.a -lz
+	$(CC) $(CFLAGS) -o hawkes_model hawkes.cc matrix.o util.o Awk.o GetOpt.o libcrc/lib/libcrc.a -lz 
 simulate: simulate.cc matrix.o util.o Awk.o GetOpt.o stats.h Array.h Matrix.h FlexHeap.h
 	$(CC) $(CFLAGS) -o simulate simulate.cc matrix.o util.o Awk.o GetOpt.o -lz
 test_plot: test_plot.cc
 	$(CC) $(CFLAGS) -I/usr/include/python3.8 -o test_plot test_plot.cc -lpython3.8
+testPlot: testPlot.cc Plot.h
+	$(CC) $(CFLAGS) -I/usr/include/python3.8  -o testPlot testPlot.cc  -lpython3.8
 
 
 
