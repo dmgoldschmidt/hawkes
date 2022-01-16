@@ -98,8 +98,9 @@ function Omegas(omega1::Matrix{Float64},p::Parameters,t::Vector{Float64}) # inpu
 end
 
 function dq_comp(p::Parameters, omega1::Matrix{Float64}, t::Vector{Float64})
-  sigma(p,t)      #compute sigma(rho)
-  ds = dsigma(p,t)# and sigma'(rho)
+  # compute dq/drho and (with little extra effort) q(rho)
+  sigma(p,t)       # compute sigma(rho)
+  ds = dsigma(p,t) # and sigma'(rho)
   q = dq = 0
   for i = 1:p.N
     for j = 2:i-1
@@ -114,27 +115,33 @@ function dq_comp(p::Parameters, omega1::Matrix{Float64}, t::Vector{Float64})
   return (dq,q)
 end
 
-function update_params(p::Parameters, omega1::Matrix{Float64}, t::Vector{Float64}, rho_max::Int64 = 100, eps::Float64 = 1.0e-5)
-  p.lambda = p.N*p.omega[1] #  = \sum_{i=1}^N omega1[i,1]
-  (dq,q) = dq_comp(p,omega1,t)
-  rho1 = p.rho
-  while p.rho <= rho_max && dq > 0
-    rho1 = p.rho # old value
-    p.rho += 10 # new value
-    (dq,q) = dq_comp(p,omega1,t)
+function update_params(p::Parameters, omega1::Matrix{Float64}, t::Vector{Float64}, rho_min::Int64 = 1,
+                       rho_max::Int64 = 100, eps::Float64 = 1.0e-5)
+  p.lambda = p.N*p.omega[1] #  this is just \sum_{i=1}^N omega1[i,1]
+  (dq0,q0) = dq_comp(p,omega1,t) # get initial values
+  delta = dq0 > 0 ? 10 : -10 # if dq > 0, q_max occurs at rho > rho0.  If dq < 0, it's at rho < rho0
+  dq = dq0
+  while rho_min <= p.rho <= rho_max && dq*dq0 > 0 # dq has not changed sign yet
+    rho0 = p.rho # save old value
+    p.rho += delta # new value
+    (dq,q) = dq_comp(p,omega1,t) # this also recomputes sigma(rho)
   end
-  if dq < 0 # either dq went from + to - or dq was < 0 initially. If we hit rho_max with dq >= 0, we exit
-    rho = p.rho # dq(rho) < 0 and dq(rho1) > 0 
-    while abs(rho - rho1) > eps 
-      p.rho = (rho+rho1)/2
-      (dq,q) = dq_comp(p,omega1,t) # compute dq at the mid-point
+  if dq*dq0 < 0 # dq changed sign between rho0 and p.rho = rho0 + delta. Find q_max by binary search
+    rho1 = p.rho # dq(rho) < 0 and dq(rho1) > 0
+    (dq,q) = dq_comp(p,omega1,t)
+    while abs(rho0 - rho1) > eps || abs(dq) > eps 
+      p.rho = (rho0+rho1)/2
+      (dq,q) = dq_comp(p,omega1,t) # compute dq (and sigma) at the mid-point
       if dq == 0; break; end
-      if dq < 0
-        rho = p.rho
+      if dq*rho1 > 0
+        rho1 = p.rho # dq(p.rho) and dq(rho1) have the same sign, so move rho1 to the midpoint
       else
-        rho1 = p.rho
+        rho0 = p.rho # dq(p.rho) and dq(rho0) have the same sign, so move rho0 to the midpoint
       end
     end
+    return true
+  else # if dq never changed sign, then rho \approx rho_min (if dq < 0) or rho_max (if dq > 0)
+    println("No sign change found.  dq = $dq, rho = $(p.rho)")
   end
 #  println("rho: $(p.rho) sigma: $(p.sigma) q: $q dq: $(dq)")
 #  exit(0)
@@ -144,13 +151,13 @@ function main(cmd_line = ARGS)
   defaults = Dict{String,Any}(
     "seed" => 12345,
     "in_file" => "hawkes_test_data.txt",
-    "ndata" => 10,
+    "ndata" => 50,
     "out_file"=>"",
     "rho_0" => 1, 
     "sigma_0" => 2, # initial child process rate
-    "lambda_0" => .1,
+    "lambda_0" => 10,
     "t_0" => 0.0,
-    "max_iters" => 5,
+    "max_iters" => 10,
   )
   cl = get_vals(defaults,cmd_line) # update defaults with command line values if they are specified
 #  println("parameters: $defaults")
