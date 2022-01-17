@@ -377,13 +377,13 @@ To solve for the remaining parameters, we first expand \eqref{Q}:
   \begin{split}
     \tilde{Q} &= \sum_{i=1}^N\sum_{j=0}^{i-1}\omega'_{ij}\log\left(\omega_j\frac{\k_{ij}^{\k_{ij}}t_{ij}^{-1}}
           {\Gamma(\k_{ij})}e^{-\k_{ij}} \right)\\
-    &= \sum_{i=1}^N\sum_{j=0}^{i-1}\omega'_{ij}\left(\log(\omega_j)+\k_{ij}(\log(\k_{ij}) - \log(t_{ij})) 
+    &= \sum_{i=1}^N\sum_{j=0}^{i-1}\omega'_{ij}\left(\log(\omega_j)+\k_{ij}\log(\k_{ij}) - \log(t_{ij}) 
           -\log(\Gamma(\k_{ij})) -\k_{ij}\right)\\
   \end{split}
 \end{equation}
 Note that \eqref{Q1} can be considerably simplified by using Stirling's approximation:
 \begin{equation}\label{stirling}
-  \log(\Gamma(x)) =  (x\log(x) -x - .5\log(x) + .5\log(2\pi) + O\left(\frac{1}{12(x+1)})\right).% + O\left(\frac{1}{12(x+1)(x+2)}.
+  \log(\Gamma(x)) =  x\log(x) -x - .5\log(x) + .5\log(2\pi) + o\left(\frac{1}{12(x+1)}\right).
 \end{equation}
 Substituting this approximation into \eqref{Q1} yields
 \begin{equation}\label{Q2}
