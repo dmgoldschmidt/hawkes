@@ -108,32 +108,43 @@ function dq_comp(p::Parameters, omega1::Matrix{Float64}, t::Vector{Float64})
       e_ij = exp(-p.rho*t_ij)
       khat = p.sigma/p.rho*(1-e_ij)
       dk = (p.rho*ds - p.sigma)/(p.rho*p.rho)*(1-e_ij) + p.sigma/p.rho*t_ij*e_ij
-      q += omega1[i,j]*log(khat)/2
-      dq += omega1[i,j]/(2*khat)*dk
+      q += omega1[i,j]*(khat*log(khat) - khat - loggamma(khat))
+      dq += omega1[i,j]*(log(khat) - digamma(khat))*dk
     end
   end
   return (dq,q)
 end
 
-function update_params(p::Parameters, omega1::Matrix{Float64}, t::Vector{Float64}, rho_min::Int64 = 1,
-                       rho_max::Int64 = 100, eps::Float64 = 1.0e-5)
-  p.lambda = p.N*p.omega[1] #  this is just \sum_{i=1}^N omega1[i,1]
+function update_params(p::Parameters, omega1::Matrix{Float64}, t::Vector{Float64}, rho_min::Float64 = .001,
+                       rho_max::Float64 = 100.0, eps::Float64 = 1.0e-5)
+  p.lambda = .1*p.N #p.N*p.omega[1] #  this is just \sum_{i=1}^N omega1[i,1]
+  rho0 = p.rho = rho_min
+  delta = 1.0
   (dq0,q0) = dq_comp(p,omega1,t) # get initial values
-  delta = dq0 > 0 ? 10 : -10 # if dq > 0, q_max occurs at rho > rho0.  If dq < 0, it's at rho < rho0
-  dq = dq0
-  while rho_min <= p.rho <= rho_max && dq*dq0 > 0 # dq has not changed sign yet
-    rho0 = p.rho # save old value
-    p.rho += delta # new value
-    (dq,q) = dq_comp(p,omega1,t) # this also recomputes sigma(rho)
+  if(dq0 < 0)
+    rho0 = p.rho = rho_max
+    delta = -1.0
   end
+  dq = dq0
+
+  while rho_min <= p.rho <= rho_max && dq*dq0 > 0 # dq has not changed sign yet
+    rho0 = p.rho
+    dq0 = dq
+    (dq,q) = dq_comp(p,omega1,t) # this also recomputes sigma(rho)
+    println("$(p.rho)  $q $dq")
+    p.rho += delta # new value
+  end
+  println("rho scan exit: dq($(p.rho)) = $dq")
+  exit(0)
+
   if dq*dq0 < 0 # dq changed sign between rho0 and p.rho = rho0 + delta. Find q_max by binary search
-    rho1 = p.rho # dq(rho) < 0 and dq(rho1) > 0
-    (dq,q) = dq_comp(p,omega1,t)
+    rho1 = p.rho 
+#    (dq,q) = dq_comp(p,omega1,t)
     while abs(rho0 - rho1) > eps || abs(dq) > eps 
       p.rho = (rho0+rho1)/2
       (dq,q) = dq_comp(p,omega1,t) # compute dq (and sigma) at the mid-point
       if dq == 0; break; end
-      if dq*rho1 > 0
+      if dq*dq0 > 0
         rho1 = p.rho # dq(p.rho) and dq(rho1) have the same sign, so move rho1 to the midpoint
       else
         rho0 = p.rho # dq(p.rho) and dq(rho0) have the same sign, so move rho0 to the midpoint

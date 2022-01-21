@@ -358,11 +358,12 @@ hence we solve
 \end{align*}
 We conclude that
 \begin{equation}\label{omega_j:0}
-  \begin{split}
-  \nu\omega_l &= \sum_{i=1}^N\omega_{il}',\quad\text{and summing over all l and interchanging the sums yields} \\
-  \nu\sum_{l=0}^{N-1}\omega_l &= \sum_{i=1}^{N}\sum_{l=0}^{N-1}\omega'_{il}.
-  \end{split}
+  \nu\omega_l = \sum_{i=1}^N\omega_{il}',
 \end{equation}
+and summing over all l and interchanging the sums yields
+$$
+  \nu\sum_{l=0}^{N-1}\omega_l = \sum_{i=1}^{N}\sum_{l=0}^{N-1}\omega'_{il}.
+$$
 However, since by definition we have
 $$
 \sum_{l=0}^{N-1} \omega_l = 1 = \sum_{l=0}^{N-1}\omega'_{il}, 
@@ -381,170 +382,121 @@ To solve for the remaining parameters, we first expand \eqref{Q}:
           -\log(\Gamma(\k_{ij})) -\k_{ij}\right)\\
   \end{split}
 \end{equation}
-Note that \eqref{Q1} can be considerably simplified by using Stirling's approximation:
-\begin{equation}\label{stirling}
-  \log(\Gamma(x)) =  x\log(x) -x - .5\log(x) + .5\log(2\pi) + o\left(\frac{1}{12(x+1)}\right).
-\end{equation}
-Substituting this approximation into \eqref{Q1} yields
-\begin{equation}\label{Q2}
+It follows that
+\begin{equation} \label{dQ_dk}
   \begin{split}
-    \tilde{Q} &\approx \sum_{i=1}^N\sum_{j=0}^{i-1}\omega'_{ij}(\log(\omega_j)+\k_{ij}\log(\k_{ij}) - \log(t_{ij})
-    -(\k_{ij}\log(\k_{ij}) -\k_{ij} -.5\log(\k_{ij}) \\
-    &+ .5\log(2\pi)) -\k_{ij})\\
-  &= \sum_{i=1}^N\sum_{j=0}^{i-1}\omega'_{ij}\left(\log(\omega_j) - \log(t_{ij}) + .5\log(\k_{ij})
-  - .5\log(2\pi) \right),
+  \frac{\partial\tilde{Q}}{\partial\k_{ij}} &= \omega'_{ij}\left(\log(\k_{ij}) + 1 -\frac{\partial}{\partial\k_{ij}}\log(\Gamma(\k_{ij}) -1\right) \\
+    &= \omega'_{ij}(\log(\k_{ij}) - \psi(\k_{ij})),
   \end{split}
 \end{equation}
-and hence, using Stirling's approximation, we have 
-\begin{equation}\label{dQ_dk}
-  \frac{\partial\tilde{Q}}{\partial\k_{ij}} = \frac{\omega'_{ij}}{2\k_{ij}}\text{for $i > j$.}
-\end{equation}
-Of course, for $i \le j,~\k_{ij} = 0.$
+where $\psi(x)$ is the digamma function.
+%% Note that \eqref{Q1} can be considerably simplified by using Stirling's approximation:
+%% \begin{equation}\label{stirling}
+%%   \log(\Gamma(x)) =  x\log(x) -x - .5\log(x) + .5\log(2\pi) + o\left(\frac{1}{12(x+1)}\right).
+%% \end{equation}
+%% Substituting this approximation into \eqref{Q1} yields
+%% \begin{equation}\label{Q2}
+%%   \begin{split}
+%%     \tilde{Q} &\approx \sum_{i=1}^N\sum_{j=0}^{i-1}\omega'_{ij}(\log(\omega_j)+\k_{ij}\log(\k_{ij}) - \log(t_{ij})
+%%     -(\k_{ij}\log(\k_{ij}) -\k_{ij} -.5\log(\k_{ij}) \\
+%%     &+ .5\log(2\pi)) -\k_{ij})\\
+%%   &= \sum_{i=1}^N\sum_{j=0}^{i-1}\omega'_{ij}\left(\log(\omega_j) - \log(t_{ij}) + .5\log(\k_{ij})
+%%   - .5\log(2\pi) \right),
+%%   \end{split}
+%% \end{equation}
+%% and hence, using Stirling's approximation, we have 
+%% \begin{equation}\label{dQ_dk}
+%%   \frac{\partial\tilde{Q}}{\partial\k_{ij}} = \frac{\omega'_{ij}}{2\k_{ij}}\text{for $i > j$.}
+%% \end{equation}
+%% Of course, for $i \le j,~\k_{ij} = 0.$
 
 For the sake of simplicity, we will now drop the dependence of $\sigma$ and $\rho$ on the mark $m$, which means
-that all child processes have the same parameters.  So there are now three parameters $\lambda_0$, $\sigma$, and
-$\rho$ which need to be re-estimated by choosing them to increase, if not maximize, $\tilde{Q}$.  
-Using \eqref{Q2}, we see that each of these parameters only affect $\tilde{Q}$ indirectly, via $\k_{ij}$, and we recall
+that all child processes have the same parameters. Recall that $t_N = 1$ (after normalizing time to [0,1]) so that
+$\lambda_0$ is now the expected number of base process arrivals.  It seems reasonable to constrain the total number
+of expected arrivals to the actual number, which is $N$, and as a further simplification, we will require that
+some fraction $(1-\mu)$ of these
+$N$ arrivals be due to the base process.  Thus we will set $\lambda_0 = (1-\mu)N$,  and the total number of arrivals
+from all child processes to $\mu N$. Thus we have the constraint
+\begin{equation}\label{constraint}
+\sum_{j=1}^N\k_{Nj} = \mu N
+\end{equation}
+on $\sigma$ and $\rho$.
+
+In fact, we can solve this equation for $\sigma$ as a function of $\rho$:
+\begin{equation}\label{sigma(rho)}
+  \begin{split}
+    \sigma(\rho) &= \mu N\frac{\rho}{S_0(\rho)},\quad\text{where}\\
+    S_0(\rho) &= \sum_{j=1}^N(1-e^{-\rho t_{Nj}}), \quad\text{and then}\\
+    S'_0(\rho) &= \sum_{j=1}^N t_{Nj}e^{-\rho t_{Nj}}.
+  \end{split}
+\end{equation}
+  We will also need $\sigma'(\rho)$.  Differentiating both sides of
+\begin{equation}
+  \begin{split}
+    \sigma(\rho)S_0 &= \mu N\rho \quad\text{yields}\\
+    \sigma'(\rho)S_0(\rho) + \sigma(\rho)S_0'(\rho)  &= \mu N,\\
+    \sigma'(\rho) &= \frac{\mu N - \sigma(\rho)S_0'(\rho)}{S_0(\rho)}.
+  \end{split}
+\end{equation}
+
+For the time being, $\mu$ will be a pre-selected constant,so there is now just one parameter 
+$\rho$ which needs to be re-estimated to increase, if not maximize, $\tilde{Q}$.  
+Using \eqref{Q1}, we see that $\rho$ only affects $\tilde{Q}$ indirectly, via $\k_{ij}$ for $j > 0$, and we recall
 from \eqref{k_hat} that
 $$
 \k_{ij} = \begin{cases}
-\lambda_0t_{i0} = \lambda_0t_i & \text{if $j = 0$}\\
 \frac{\sigma}{\rho}(1-e^{-\rho{t_{ij}}}) & \text{if $0 < j < i$}\\
 0 &\text{if $j\ge i$}.
 \end{cases}
 $$
-Moreover, it is clear that for $\rho{t_{ij}}$ large,
-$$
-\k_{ij} \approx \frac{\sigma}{\rho},
-$$
-while by expanding the exponential in a Taylor series about 0, we see that
+Moreover, by expanding the exponential in a Taylor series about 0, we see that
 \begin{equation}\label{k_hat(0)}
-\k_{ij}\mid_{\rho=0} := \lim_{\rho\rightarrow{0^+}}\k_{ij} = \sigma{t_{ij}}.
+\lim_{\rho\rightarrow{0^+}}\k_{ij} = \sigma{t_{ij}}.
 \end{equation}
-In addition, \eqref{dQ_dk} implies that
-\begin{equation}\label{dQ_dk(0)}
-\left.\frac{\partial\tilde{Q}}{\partial\k_{ij}}\right|_{\rho=0} = \frac{\omega'_{ij}}{2\sigma t_{ij}},
-\end{equation}
-nd we also see that
-\begin{equation}\label{dk_lambda,sigma}
-  \begin{split}
-    \frac{\partial\k_{i0}}{\partial\lambda_0} &= 
-        t_{i0} \quad\text{for $j = 0$, and for $j > 0$ we have}\\
-    \frac{\partial\k_{ij}}{\partial\sigma} &= 
-    \frac{\k_{ij}}{\sigma}.
-  \end{split}
-\end{equation}
+%% In addition, \eqref{dQ_dk} implies that
+%% \begin{equation}\label{dQ_dk(0)}
+%% \left.\frac{\partial\tilde{Q}}{\partial\k_{ij}}\right|_{\rho=0} = \frac{\omega'_{ij}}{2\sigma t_{ij}},
+%% \end{equation}
 
-Next, we define
-$$
-W'_0 := \sum_{i=1}^N\omega'_{i0},\quad\text{and}\quad   W'_1 := \sum_{i>j>0}\omega'_{ij}.
-$$
-Note that by definition,
-$$
-\sum_{j=0}^{N-1}\omega'_{ij} = 1\quad\text{for all } i,
-$$
-and therefore
-\begin{equation}\label{W0+W1}
-  W'_0 + W'_1 = N
-\end{equation}
+%% We also see that
+%% \begin{equation}\label{dk_dlambda}
+%%   \frac{\partial\k_{ij}}{\partial\lambda_0} = \begin{cases}
+%%     t_{i0} & \text{for $j = 0$},\\
+%%     0 & \text{for $j > 0$}.
+%%   \end{cases}
+%% \end{equation}
 
-Now for $j = 0$,  \eqref{dQ_dk} and \eqref{dk_lambda,sigma} immediately imply
-\begin{equation}\label{dQ_dlambda}
-\frac{\partial\tilde{Q}}{\partial\lambda_0} = \sum_{i=1}^N\frac{\omega'_{i0}}{2\k_{i0}}t_{i0} 
-= \frac{1}{2\lambda_0}\sum_{i=1}^N\omega'_{i0} = \frac{W'_0}{2\lambda_0}.
-\end{equation}
-It's also easy to see that
-\begin{equation}\label{dQ_dsigma}
-  \frac{\partial\tilde{Q}}{\partial\sigma} = \sum_{i>j>0}\frac{\omega'_{ij}}{2\k_{ij}}\frac{\k_{ij}}{\sigma} 
-= \frac{1}{2\sigma}\sum_{i>j>0}\omega'_{ij} = \frac{W'_1}{2\sigma}.
-\end{equation}
-    
-    
+%% Moreover for $j > 0$ we have
+%%   \begin{equation}\label{dk_dsigma}
+%%   \frac{\partial\k_{ij}}{\partial\sigma} = \begin{cases}
+%%     \frac{\k_{ij}}{\sigma} & \text{for $j > 0$},\\
+%%     0 & \text{for $j = 0$}.
+%%   \end{cases}
+%% \end{equation}
 
-We can now solve for $\lambda_0$, $\sigma$, and $\rho$.  However, we
-need to enforce an obvious constraint, namely that
-the total number of expected arrivals at time $t_N = 1$ equals the
-actual number, which is just $N$:
-\begin{equation}\label{constraint}
-  \sum_{j=0}^{N-1}\k_{Nj} = N.
-\end{equation}
-Define
-$$
-S := N - \sum_{j=0}^{N-1}\k_{Nj},
-$$
-then using \eqref{dk_lambda,sigma} we get
-\begin{equation}\label{dS_dparams}
-  \begin{split}
-    \frac{\partial{S}}{\partial\lambda_0} &= -t_{N0} = -1,\\
-    \frac{\partial{S}}{\partial\sigma} &= -\frac{1}{\sigma}\sum_{j = 1}^{N-1}\k_{Nj},\\
-  \end{split}
-\end{equation}
+%% Next, we define
+%% $$
+%% W'_0 := \sum_{i=1}^N\omega'_{i0},\quad\text{and}\quad   W'_1 := \sum_{i>j>0}\omega'_{ij}.
+%% $$
+%% Note that by definition,
+%% $$
+%% \sum_{j=0}^{N-1}\omega'_{ij} = 1\quad\text{for all } i,
+%% $$
+%% and therefore
+%% \begin{equation}\label{W0+W1}
+%%   W'_0 + W'_1 = N
+%% \end{equation}
 
+%% Now for $j = 0$,  \eqref{dQ_dk} and \eqref{dk_dlambda} immediately imply
+%% \begin{equation}\label{dQ_dlambda}
+%% \frac{\partial\tilde{Q}}{\partial\lambda_0} = \sum_{i=1}^N\omega'_{i0}(\log(\lambda_0t_i) + \psi(\lambda_0t_i)t_i. 
+%% \end{equation}
+%% It's also easy to see that
+%% \begin{equation}\label{dQ_dsigma}
+%%   \frac{\partial\tilde{Q}}{\partial\sigma} = \sum_{i>j>0}\frac{\omega'_{ij}}{2\k_{ij}}\frac{\k_{ij}}{\sigma} 
+%% = \frac{1}{2\sigma}\sum_{i>j>0}\omega'_{ij} = \frac{W'_1}{2\sigma}.
+%% \end{equation}
 
-Now we solve the constrained maximization problem using a lagrange multiplier $\nu$ just as we did above.
-Our first two constrained maximization equations are
-\begin{equation}\label{eq1}
-  \begin{split}
-    0 &= \frac{\partial\tilde{Q}}{\partial\lambda_0} + \nu\frac{\partial{S}}{\partial\lambda_0} \\
-    &=  \frac{W'_0}{2\lambda_0} - {\nu},\quad\text{whence}\\
-    \lambda_0 &= \frac{W'_0}{2\nu}.
-  \end{split}
-\end{equation}
-and
-\begin{align*}
-  0 &= \frac{\partial\tilde{Q}}{\partial\sigma} + \nu\frac{\partial{S}}{\partial\sigma} \\
-  &= \frac{W'_1}{2\sigma}-
-  \frac{\nu}{\sigma}\sum_{j=1}^{N-1}\k_{Nj}.
-\end{align*}
-Applying the constraint equation \eqref{constraint}, we get
-\begin{equation}\label{eq2}
-  \begin{split}
-    \frac{\nu}{\sigma}(N-\k_{N0}) &= \frac{W'_1}{2\sigma},\\
-    \nu(N-\k_{N0}) &= \frac{W'_1}{2}.
-  \end{split}
-\end{equation}
-
-However, since $\k_{N0} = \lambda_0t_{N0} = \lambda_0$, we can substitute
-from \eqref{eq1} into \eqref{eq2} and use \eqref{W0+W1}
-to obtain the value of $\nu$:
-
-\begin{equation}\label{nu}
-  \begin{split}
-N\nu - \frac{W'_0}{2} &= \frac{W'_1}{2},\\ 
-\nu &= \frac{W'_0+W'_1}{2N} = \frac{1}{2}.
-  \end{split}
-\end{equation}
-Then \eqref{eq1} simplifies to
-\begin{equation} \label{lambda0:1}
-    \lambda_0 = W_0'.
-\end{equation}
-
-We are now left with two parameters, $\sigma$ and $\rho$, and two equations:
-$$
-S = 0, \quad\text{and}\quad \frac{\partial\tilde{Q}}{\partial\rho} = 0.
-$$
-We can use the first equation to solve for $\sigma$ as a function of $\rho$, since we already have the new value of $\lambda_0$:
-\begin{equation}\label{eq4}
-  \sigma(\rho) = (N - \lambda_0)\left(\sum_{j=1}^{N-1}\frac{1-e^{-t_{Nj}\rho}}{\rho}\right)^{-1}.
-\end{equation}
-And as noted above, the Taylor expansion for the exponential shows that
-$$
-\sigma(0) = (N - \lambda_0)\left(\sum_{j=1}^{N-1}t_{Nj}\right)^{-1}.
-$$
-
-So we have one remaining parameter.  We first compute $\sigma'(\rho)$.  Put
-$$
-S_0(\rho) := \sum_{j=1}^{N-1}(1-e^{-\rho t_{Nj}}),\quad\text{then}\quad S_0'(\rho) = \sum_{j=1}^{N-1}t_{Nj}e^{-\rho t_{Nj}}.
-$$
-We have
-$$
-\sigma(\rho)S_0(\rho) = (N-\lambda_0)\rho,
-$$
-So differentiating both sides:
-\begin{align*}
-  \sigma'(\rho)S_0(\rho) + \sigma(\rho)S'_0(\rho) &= N-\lambda_0,\\
-  \sigma'(\rho) &= \frac{N-\lambda_0 -\sigma(\rho)S_0'(\rho)}{S_0(\rho)}.
-\end{align*}
 It follows that
 \begin{equation}\label{dk_hat_drho}
     \frac{\partial\k_{ij}}{\partial\rho} = \left(\frac{\rho\sigma'(\rho) - \sigma(\rho)}{\rho^2}(1-e^{-\rho t_{ij}}) +
@@ -554,8 +506,143 @@ It follows that
 And finally, the chain rule yields
 \begin{equation}\label{dQ_drho}
   \frac{\partial\tilde{Q}}{\partial\rho} = \sum_{i>j>0}\frac{\partial\tilde{Q}}{\partial\k_{ij}}\cdot
-  \frac{\partial\k_{ij}}{\partial\rho} =  \sum_{i>j>0}\frac{\omega'_{ij}}{2\k_{ij}}\cdot\frac{\partial\k_{ij}}{\partial\rho}.
+  \frac{\partial\k_{ij}}{\partial\rho} =
+  \sum_{i>j>0}\omega'_{ij}(\log(\k_{ij}) - \psi(\k_{ij})\frac{\partial\k_{ij}}{\partial\rho}.
 \end{equation}
+
+\section{The Algorithm}
+\begin{enumerate}
+  \item input prior values $\mu, \sigma, \rho $ and $\{\omega_j\mid 1 < N\}$.
+  \item Set $\lambda_0 = (1-\mu)N$.
+  \item For $1\le i\le N$ and $0 < j < i$ compute $\omega'_{ij}$ from \eqref{q_ij} and
+    \eqref{omega'_ij}. \label{start}
+  \item Compute the score which is the sum of the logs of the normalizing factors in the previous step.
+  \item If the score has not increased significantly, or if the maximum number of iterations has been met, exit.
+  \item Set $\rho_0 = \rho$.
+%  \item Compute $dQ(\rho_0)$ from \eqref{dQ_drho} and let $s = dQ(\rho_0) > 0? 1 : -1$
+  \item use a numerical root-finder to re-estimate $\rho$ (and therefore $\sigma$ as well) e.g. by the
+    method of bisection, as in the
+    following Julia code, where dQ computes $\sigma(\rho)$ and $\partial\tilde{Q}/\partial\rho$ from
+    \eqref{dk_hat_drho} and \eqref{dQ_drho}.
+\begin{verbatim}
+  s = dQ(rho_0) > 0 ? 1 : -1
+  rho = rho_0
+# find a value of dQ(rho) whose sign is opposite 
+# that of dQ(rho_0)
+  while s*dQ(rho) > 0 
+    rho += s*Delta_rho # Delta_rho and epsilon are 
+                       # pre-specified constants
+  end
+# Now shrink the distance between rho and rho_0 while 
+# keeping the opposite sign condition
+
+  while abs(rho-rho_0) > epsilon 
+    rho_1 = (rho+rho_0)/2
+    if dQ(rho_1)*dQ(rho) > 0; rho = \rho_1
+    else rho_0 = \rho_1; end
+  end
+\end{verbatim}
+  \item go to step \ref{start}.
+\end{enumerate}
+    
+    
+    
+    
+%% We can now solve for $\lambda_0$, $\sigma$, and $\rho$.  However, we
+%% need to enforce an obvious constraint, namely that
+%% the total number of expected arrivals at time $t_N = 1$ equals the
+%% actual number, which is just $N$:
+%% \begin{equation}\label{constraint}
+%%   \sum_{j=0}^{N-1}\k_{Nj} = N.
+%% \end{equation}
+%% Define
+%% $$
+%% S := N - \sum_{j=0}^{N-1}\k_{Nj},
+%% $$
+%% then using \eqref{dk_dlambda} and \eqref{dk_dsigma} we get
+%% \begin{equation}\label{dS_dparams}
+%%   \begin{split}
+%%     \frac{\partial{S}}{\partial\lambda_0} &= -t_{N0} = -1,\\
+%%     \frac{\partial{S}}{\partial\sigma} &= -\frac{1}{\sigma}\sum_{j = 1}^{N-1}\k_{Nj},\\
+%%   \end{split}
+%% \end{equation}
+
+
+%% Now we solve the constrained maximization problem using a lagrange multiplier $\nu$ just as we did above.
+%% Our first two constrained maximization equations are
+%% \begin{equation}\label{eq1}
+%%   \begin{split}
+%%     0 &= \frac{\partial\tilde{Q}}{\partial\lambda_0} + \nu\frac{\partial{S}}{\partial\lambda_0} \\
+%%     &=  \frac{W'_0}{2\lambda_0} - {\nu},\quad\text{whence}\\
+%%     \lambda_0 &= \frac{W'_0}{2\nu}.
+%%   \end{split}
+%% \end{equation}
+%% and
+%% \begin{align*}
+%%   0 &= \frac{\partial\tilde{Q}}{\partial\sigma} + \nu\frac{\partial{S}}{\partial\sigma} \\
+%%   &= \frac{W'_1}{2\sigma}-
+%%   \frac{\nu}{\sigma}\sum_{j=1}^{N-1}\k_{Nj}.
+%% \end{align*}
+%% Applying the constraint equation \eqref{constraint}, we get
+%% \begin{equation}\label{eq2}
+%%   \begin{split}
+%%     \frac{\nu}{\sigma}(N-\k_{N0}) &= \frac{W'_1}{2\sigma},\\
+%%     \nu(N-\k_{N0}) &= \frac{W'_1}{2}.
+%%   \end{split}
+%% \end{equation}
+
+%% However, since $\k_{N0} = \lambda_0t_{N0} = \lambda_0$, we can substitute
+%% from \eqref{eq1} into \eqref{eq2} and use \eqref{W0+W1}
+%% to obtain the value of $\nu$:
+
+%% \begin{equation}\label{nu}
+%%   \begin{split}
+%% N\nu - \frac{W'_0}{2} &= \frac{W'_1}{2},\\ 
+%% \nu &= \frac{W'_0+W'_1}{2N} = \frac{1}{2}.
+%%   \end{split}
+%% \end{equation}
+%% Then \eqref{eq1} simplifies to
+%% \begin{equation} \label{lambda0:1}
+%%     \lambda_0 = W_0'.
+%% \end{equation}
+
+%% We are now left with two parameters, $\sigma$ and $\rho$, and two equations:
+%% $$
+%% S = 0, \quad\text{and}\quad \frac{\partial\tilde{Q}}{\partial\rho} = 0.
+%% $$
+%% We can use the first equation to solve for $\sigma$ as a function of $\rho$, since we already have the new value of $\lambda_0$:
+%% \begin{equation}\label{eq4}
+%%   \sigma(\rho) = (N - \lambda_0)\left(\sum_{j=1}^{N-1}\frac{1-e^{-t_{Nj}\rho}}{\rho}\right)^{-1}.
+%% \end{equation}
+%% And as noted above, the Taylor expansion for the exponential shows that
+%% $$
+%% \sigma(0) = (N - \lambda_0)\left(\sum_{j=1}^{N-1}t_{Nj}\right)^{-1}.
+%% $$
+
+%% So we have one remaining parameter.  We first compute $\sigma'(\rho)$.  Put
+%% $$
+%% S_0(\rho) := \sum_{j=1}^{N-1}(1-e^{-\rho t_{Nj}}),\quad\text{then}\quad S_0'(\rho) = \sum_{j=1}^{N-1}t_{Nj}e^{-\rho t_{Nj}}.
+%% $$
+%% We have
+%% $$
+%% \sigma(\rho)S_0(\rho) = (N-\lambda_0)\rho,
+%% $$
+%% So differentiating both sides:
+%% \begin{align*}
+%%   \sigma'(\rho)S_0(\rho) + \sigma(\rho)S'_0(\rho) &= N-\lambda_0,\\
+%%   \sigma'(\rho) &= \frac{N-\lambda_0 -\sigma(\rho)S_0'(\rho)}{S_0(\rho)}.
+%% \end{align*}
+%% It follows that
+%% \begin{equation}\label{dk_hat_drho}
+%%     \frac{\partial\k_{ij}}{\partial\rho} = \left(\frac{\rho\sigma'(\rho) - \sigma(\rho)}{\rho^2}(1-e^{-\rho t_{ij}}) +
+%%     \frac{\sigma(\rho)}{\rho}t_{ij}e^{-\rho t_{ij}}\right).
+%% \end{equation}
+
+%% And finally, the chain rule yields
+%% \begin{equation}\label{dQ_drho}
+%%   \frac{\partial\tilde{Q}}{\partial\rho} = \sum_{i>j>0}\frac{\partial\tilde{Q}}{\partial\k_{ij}}\cdot
+%%   \frac{\partial\k_{ij}}{\partial\rho} =  \sum_{i>j>0}\frac{\omega'_{ij}}{2\k_{ij}}\cdot\frac{\partial\k_{ij}}{\partial\rho}.
+%% \end{equation}
 
 
 
@@ -563,45 +650,3 @@ And finally, the chain rule yields
 \end{document}
 
 
-
-
-    \frac{\partial{S}}{\partial\rho} &= \frac{\sigma}{\rho^2}\sum_{j=1}^{N-1}\left(1-e^{-\rho t_{Nj}} - \rho t_{Nj}e^{-\rho t_{Nj}}\right).
-Moreover, \eqref{dk_drho(0)} implies that
-\begin{equation}\label{dS_drho(0)}
-  \left.\frac{\partial S}{\partial\rho}\right|_{\rho=0} = -\sum_{j=1}^{N-1}\left.\frac{\partial\k_{Nj}}{\partial\rho}\right|_{\rho=0}
-  = \frac{\sigma}{2}\sum_{j=1}^{N-1}t_{Nj}^2.
-\end{equation}
-
-Substituting $\nu =1/2$ and using \eqref{dQ_drho} and \eqref{dS_dparams}, our third and final constrained maximization
-equation is
-\begin{align*}
-  0 &= f(\rho) := \frac{\partial\tilde{Q}}{\partial\rho} + \frac{1}{2}\frac{\partial{S}}{\partial\rho} \\
-  &= -\frac{1}{2}\sum_{i>j>0}\omega'_{ij}\left(\frac{1}{\rho} - t_{ij}\frac{e^{-\rho{t_{ij}}}}{1-e^{-\rho t_{ij}}}\right)
-%  &= -\frac{1}{2\rho}\sum_{i>j>0}\omega'_{ij}\left(1 + \frac{\rho{t_{ij}}}{(1 - e^{\rho{t_{ij}}}})\right)
-  +\frac{\sigma}{2\rho^2}\sum_{j=1}^{N-1}\left(1 - e^{-\rho{t_{Nj}}} - \rho t_{Nj}e^{-\rho t_{Nj}}\right).
-\end{align*}
-So we need to find the roots of $f(\rho)$.
-
-Using the special values at $\rho=0$ found above at \eqref{dQ_drho(0)} and \eqref{dS_drho(0)}, we see that
-$$
-f(0) = -\frac{1}{4}\sum_{i>j>0}\omega'_{ij}t_{ij} +\frac{\sigma}{4}\sum_{j=1}^{N-1}t_{Nj}^2.
-$$
-
-
-Note that it is easy to solve \eqref{constraint} for $\sigma$ as a function of $\rho$ (and other
-known quantities):
-
-Moreover, to find evaluate this at $\rho = 0$, we expand the exponentials to the appropriate order:
-\begin{equation}\label{dk_drho(0)}
-  \begin{split}
-    \left.\frac{\partial\k_{ij}}{\partial\rho}\right|_{\rho=0} &=
-    -\frac{\sigma}{\rho^2}\left(1-(1-\rho t_{ij} + \frac{1}{2}\rho^2t_{ij}^2 + O(\rho^3) - \rho t_{ij}(1 - \rho t_{ij} + O(\rho^2)\right)\\
-      &= -\frac{\sigma}{\rho^2}\left(\rho t_{ij} - \frac{1}{2}\rho^2t_{ij}^2 + O(\rho^3) - \rho t_{ij} + \rho^2 t_{ij}^2 + O(\rho^3)\right)\\
-        &= -\frac{\sigma}{\rho^2}\left(\frac{1}{2}\rho^2t_{ij}^2 + O(\rho^3)\right)\\
-          &= -\frac{1}{2}\sigma t_{ij}^2.
-\end{split}
-\end{equation}
-Furthermore, using \eqref{dQ_dk(0)} and \eqref{dk_drho(0)}, we have
-\begin{equation}\label{dQ_drho(0)}
-  \left.\frac{\partial\tilde{Q}}{\partial\rho}\right|_{\rho=0} = -\sum_{i>j>0}\frac{\omega'_{ij}}{2\sigma t_{ij}}\frac{1}{2}\sigma t_{ij}^2 = -\frac{1}{4}\sum_{i>j>0}\omega'_{ij}t_{ij}.
-\end{equation}
