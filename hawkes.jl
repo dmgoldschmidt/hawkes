@@ -27,7 +27,8 @@ function pretty_print(mat::Matrix{Float64}, digits = 5)
 end
 
 mutable struct Parameters
-  N::Int64
+  ndata::Int64
+  nstates::Int64
   lambda::Float64
   rho::Float64
   sigma::Float64
@@ -51,24 +52,39 @@ function Base.:<(x::HawkesPoint,y::HawkesPoint)
   return x.time < y.time
 end
 
+function rho_dump(p::Parameters, omega1::Matrix{Float64}, t::Vector{Float64},
+                  rho_min::Float64, rho_max::Float64, delta::Float64)
+  rho_save = p.rho
+  sigma_save = p.sigma
+  p.rho = rho_min
+  while(p.rho <= rho_max)
+    dq,q = dq_drho(p,omega1,t)
+    println("rho: $(p.rho) q: $q dq:$dq")
+    p.rho += delta
+  end
+  p.rho = rho_save
+  p.sigma = sigma_save
+end
+
 function dsigma(p::Parameters,t::Vector{Float64})
   S0 = 0.0
   dS0 = 0.0
-  for j in 1:p.N-1
-    t_Nj = t[p.N] - t[j]
-    e_Nj = exp(-p.rho*t_Nj)
-    S0 += 1-e_Nj
-    dS0 += t_Nj*e_Nj;
+  for j in 1:min(p.ndata,p.nstates)
+    t_j = t[p.ndata] - t[p.ndata-j+1]
+    e_j = exp(-p.rho*t_j)
+    S0 += 1-e_j
+    dS0 += t_j*e_j;
   end
-  return ((p.N - p.lambda) - p.sigma*dS0)/S0
+  return ((p.ndata - p.lambda) - p.sigma*dS0)/S0
 end
 
 function sigma(p::Parameters,t::Vector{Float64})
   sum = 0.0
-  for j in 1:p.N-1
-    sum += 1-exp(-p.rho*(t[p.N]-t[j]))
+  for j in 1:min(p.ndata,p.nstates)
+    t_j = t[p.ndata] - t[p.ndata-j+1]
+    sum += 1-exp(-p.rho*t_j)
   end
-  p.sigma = (p.N - p.lambda)*p.rho/sum
+  p.sigma = (p.ndata - p.lambda)*p.rho/sum
 end
 
 function Omegas(omega1::Matrix{Float64},p::Parameters,t::Vector{Float64}) # input old p.omega and t, output omega1, new p.omega
@@ -77,15 +93,16 @@ function Omegas(omega1::Matrix{Float64},p::Parameters,t::Vector{Float64}) # inpu
   omega1 .= 0.0
   omega1[1,1] = 1.0
   for i in 2:nrows
-    for j in 1:i
+    for j in 1:min(i,ncols)
       if j == 1 # base process
         t_ij = t[i]
         khat = p.lambda*t[i]
       else
-        t_ij = t[i] - t[j-1]
+        t_ij = t[i] - t[i-j+1]
         khat = p.sigma/p.rho*(1-exp(-p.rho*t_ij))
       end
       omega1[i,j] = p.omega[j]*exp(khat*log(khat) - khat - log(t_ij) - loggamma(khat))
+ #     println("omega1[$i,$j]: ",omega1[i,j])
     end
     rsum = sum(omega1[i,:])
     omega1[i,:] ./= rsum
@@ -97,30 +114,32 @@ function Omegas(omega1::Matrix{Float64},p::Parameters,t::Vector{Float64}) # inpu
   return score
 end
 
-function dq_comp(p::Parameters, omega1::Matrix{Float64}, t::Vector{Float64})
+function dq_drho(p::Parameters, omega1::Matrix{Float64}, t::Vector{Float64})
   # compute dq/drho and (with little extra effort) q(rho)
   sigma(p,t)       # compute sigma(rho)
   ds = dsigma(p,t) # and sigma'(rho)
-  q = dq = 0
-  for i = 1:p.N
-    for j = 2:i-1
-      t_ij = t[i] - t[j]
+  q = dq = 0.0
+    
+  for i = 2:p.ndata
+    for j = 2:min(i,p.nstates)
+      t_ij = t[i] - t[i-j+1]
       e_ij = exp(-p.rho*t_ij)
       khat = p.sigma/p.rho*(1-e_ij)
       dk = (p.rho*ds - p.sigma)/(p.rho*p.rho)*(1-e_ij) + p.sigma/p.rho*t_ij*e_ij
       q += omega1[i,j]*(khat*log(khat) - khat - loggamma(khat))
       dq += omega1[i,j]*(log(khat) - digamma(khat))*dk
+ #     println("dq_drho($i,$j): omega1: $(omega1[i,j]) t_ij: $t_ij e_ij: $e_ij khat: $khat dk: $dk dq: $dq")
     end
   end
-  return (dq,q)
+  return (-dq,-q)
 end
 
 function update_params(p::Parameters, omega1::Matrix{Float64}, t::Vector{Float64}, rho_min::Float64 = .001,
                        rho_max::Float64 = 100.0, eps::Float64 = 1.0e-5)
-  p.lambda = .1*p.N #p.N*p.omega[1] #  this is just \sum_{i=1}^N omega1[i,1]
+  p.lambda = .1*p.ndata #p.ndata*p.omega[1] #  this is just \sum_{i=1}^ndata omega1[i,1]
   rho0 = p.rho = rho_min
   delta = 1.0
-  (dq0,q0) = dq_comp(p,omega1,t) # get initial values
+  (dq0,q0) = dq_drho(p,omega1,t) # get initial values
   if(dq0 < 0)
     rho0 = p.rho = rho_max
     delta = -1.0
@@ -130,25 +149,27 @@ function update_params(p::Parameters, omega1::Matrix{Float64}, t::Vector{Float64
   while rho_min <= p.rho <= rho_max && dq*dq0 > 0 # dq has not changed sign yet
     rho0 = p.rho
     dq0 = dq
-    (dq,q) = dq_comp(p,omega1,t) # this also recomputes sigma(rho)
+    (dq,q) = dq_drho(p,omega1,t) # this also recomputes sigma(rho)
     println("$(p.rho)  $q $dq")
     p.rho += delta # new value
   end
   println("rho scan exit: dq($(p.rho)) = $dq")
-  exit(0)
+#  exit(0)
 
   if dq*dq0 < 0 # dq changed sign between rho0 and p.rho = rho0 + delta. Find q_max by binary search
     rho1 = p.rho 
-#    (dq,q) = dq_comp(p,omega1,t)
-    while abs(rho0 - rho1) > eps || abs(dq) > eps 
+    niters = 0
+    while niters < 10 && (abs(rho0 - rho1) > eps || abs(dq) > eps) 
       p.rho = (rho0+rho1)/2
-      (dq,q) = dq_comp(p,omega1,t) # compute dq (and sigma) at the mid-point
+      println("p.rho: $(p.rho) rho0: $(rho0) rho1: $(rho1)")
+      (dq,q) = dq_drho(p,omega1,t) # compute dq (and sigma) at the mid-point
       if dq == 0; break; end
       if dq*dq0 > 0
         rho1 = p.rho # dq(p.rho) and dq(rho1) have the same sign, so move rho1 to the midpoint
       else
         rho0 = p.rho # dq(p.rho) and dq(rho0) have the same sign, so move rho0 to the midpoint
       end
+      niters += 1
     end
     return true
   else # if dq never changed sign, then rho \approx rho_min (if dq < 0) or rho_max (if dq > 0)
@@ -163,6 +184,7 @@ function main(cmd_line = ARGS)
     "seed" => 12345,
     "in_file" => "hawkes_test_data.txt",
     "ndata" => 50,
+    "nstates" => 20,
     "out_file"=>"",
     "rho_0" => 1, 
     "sigma_0" => 2, # initial child process rate
@@ -179,6 +201,7 @@ function main(cmd_line = ARGS)
   seed = defaults["seed"]
   in_file = defaults["in_file"]
   ndata = defaults["ndata"]
+  nstates = defaults["nstates"]
   out_file = defaults["out_file"]
   rho_0 = defaults["rho_0"]
   sigma_0 = defaults["sigma_0"]
@@ -216,16 +239,15 @@ function main(cmd_line = ARGS)
   end
   rnd = my_round(3)
   println("normalized arrival times:\n$(map(rnd,t))")
-  omega = [Float64(ndata+1-j) for j in 1:ndata]
-  omega ./= sum(omega)
-  params = Parameters(ndata,lambda_0,rho_0,sigma_0,omega)
+  #omega = [Float64(ndata+1-j) for j in 1:ndata]
+  #  omega ./= sum(omega)
+  omega = fill(1.0/nstates,nstates)
+  params = Parameters(ndata,nstates,lambda_0,rho_0,sigma_0,omega)
   for (key,val) in children
     println("mark $(key): children: $(transpose(val))")
   end
-  println("omega: $(map(rnd,omega))")
-
-  omega1 = Matrix{Float64}(undef,ndata,ndata)
-  omega = Vector{Float64}(undef,ndata)
+#  println("omega: $(map(rnd,omega))")
+  omega1 = Matrix{Float64}(undef,ndata,nstates)
   
   #OK, begin EM iteration
   for niters in 1:max_iters
