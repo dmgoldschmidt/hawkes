@@ -153,6 +153,7 @@ function update_params(p::Parameters, omega1::Matrix{Float64}, t::Vector{Float64
     println("$(p.rho)  $q $dq")
     p.rho += delta # new value
   end
+  if(p.rho == 0);  p.rho = rho_min; end
   println("rho scan exit: dq($(p.rho)) = $dq")
 #  exit(0)
 
