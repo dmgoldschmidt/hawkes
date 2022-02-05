@@ -87,7 +87,9 @@ function sigma(p::Parameters,t::Vector{Float64})
   p.sigma = (p.ndata - p.lambda)*p.rho/sum
 end
 
-function Omegas(omega1::Matrix{Float64},p::Parameters,t::Vector{Float64}) # input old p.omega and t, output omega1, new p.omega
+function Omegas(omega1::Matrix{Float64},p::Parameters,t::Vector{Float64})
+  # input old p.omega and t, output omega1, new p.omega
+  omega = true
   (nrows,ncols) = size(omega1)
   score = 0.0
   omega1 .= 0.0
@@ -112,8 +114,10 @@ function Omegas(omega1::Matrix{Float64},p::Parameters,t::Vector{Float64}) # inpu
       exit(1)
     end
   end
-  sums = sum(omega1,dims=1) # get column sums
-  for j in 1:ncols; p.omega[j] = sums[j]/nrows; end
+  if omega
+    sums = sum(omega1,dims=1) # get column sums
+    for j in 1:ncols; p.omega[j] = sums[j]/nrows; end
+  end
 #  println("column sums: $(p.omega)")
   return score
 end
@@ -253,7 +257,6 @@ function main(cmd_line = ARGS)
     j = min(i+nstates,ndata)
     rho[i] = 10*log(2)/(t[j]-t[i])        # sigma[i]*e^{-rho[i]*(t[j]-t[i])} = 2^{-10}sigma[i]
   end
-
   params = Parameters(ndata,nstates,lambda_0,rho,sigma,omega)
 #  for (key,val) in children
 #    println("mark $(key): children: $(transpose(val))")
@@ -276,7 +279,7 @@ function main(cmd_line = ARGS)
     if niters < max_iters # re-estimate params
       println("Begin iteration $niters")
       # now recompute sigmas for all child processes
-      for i in 1:ndata-1
+      for i in 1:ndata-nstates-1
         khat = 0.0
         for j in 1:min(nstates-1,ndata - i) # compute expected total no. of arrivals for process i 
           khat += omega1[i+j, j+1]
@@ -289,7 +292,7 @@ function main(cmd_line = ARGS)
       println("omega: $(map(rnd,params.omega))")
     end #re-estimation
   end # EM iteration
-  println("updated parameters: lambda: $(rnd(params.lambda)) rho: $(rnd.(params.rho)) sigma: $(rnd.(params.sigma))")
+  println("updated parameters: lambda: $(rnd(params.lambda)) \nrho: $(rnd.(params.rho)) \nsigma: $(rnd.(params.sigma))")
 end #main
 
 # execution begins here
