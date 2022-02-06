@@ -1,0 +1,17 @@
+Sun 06 Feb 2022 11:18:24 AM PST
+Ok, I'm restarting logging, which I should have been doing all along,
+but whatever.
+
+I've just finished getting hawkes.jl into some sort of
+shape with simulated data, and I'm now doing mods to read Cindy
+wsa data.  This involves building flowsets, so I'm writing "get_flowsets.jl".
+It will read a raw wsa file and scan it for "triggers" which are enips talking
+to rare webips.  I have a file of rare webips, which I convert to a julia
+dictionary: "rare_webips.jld2" if that doesn't exist already, or load it
+if it does exist. For each raw wsa record, I read the enip and check a dictionary fts_flowsets = Dict{String,Flowset} keyed on enip to see if enip in flowsets. If it's not in fts_flowsets, and the corresponding wbip is rare, I start a new
+Flowset and dictionary entry.  Flowset is a struct which has members
+(enip, start_time, and data = Array{HawkesPoint}).  For now, HawkesPoint
+is a struct with members (time, wbip).  Later I might add more stuff.
+So if the enip just read is in fts_flowsets, I check to see if the current
+time is < start_time + 240.  If it is, I push a new HawkesPoint to data.
+Otherwise, I ignore it and continue reading the raw wsa file.

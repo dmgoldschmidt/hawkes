@@ -15,6 +15,8 @@ using DelimitedFiles
 using Random
 using LinearAlgebra
 using SpecialFunctions
+using JLD2
+using FileIO
 
 function pretty_print(mat::Matrix{Float64}, digits = 5)
   (nrows,ncols) = size(mat)
@@ -192,7 +194,8 @@ function main(cmd_line = ARGS)
   defaults = Dict{String,Any}(
     "seed" => 12345,
     "in_file" => "hawkes_test_data.txt",
-    "ndata" => 50,
+    "rare_file" => "rare_webips.jld2"
+    "max_data" => 50,
     "nstates" => 20,
     "out_file"=>"",
     "rho_0" => 1, 
@@ -210,7 +213,8 @@ function main(cmd_line = ARGS)
   # update defaults (if they appeared on the command line)
   seed = defaults["seed"]
   in_file = defaults["in_file"]
-  ndata = defaults["ndata"]
+  rare_file = defaults["rare_file"]
+  max_data = defaults["max_data"]
   nstates = defaults["nstates"]
   out_file = defaults["out_file"]
   rho_0 = defaults["rho_0"]
@@ -263,7 +267,7 @@ function main(cmd_line = ARGS)
 #  end
     println("omega: $(map(rnd,omega))")
   omega1 = Matrix{Float64}(undef,ndata,nstates)
-  
+
   last_score = 0.0
   for niters in 1:max_iters # begin EM iteration ***********************
     score = Omegas(omega1,params,t) #= compute posterior probability matrix omega1
