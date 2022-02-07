@@ -203,7 +203,7 @@ function main(cmd_line = ARGS)
     "lambda_0" => 10,
     "t_0" => 0.0,
     "max_iters" => 10,
-    "eps" => 1.0e-3
+    "eps" => 1.0e-3'
   )
   cl = get_vals(defaults,cmd_line) # update defaults with command line values if they are specified
   #  println("parameters: $defaults")

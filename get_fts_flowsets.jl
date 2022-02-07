@@ -28,9 +28,9 @@ function pretty_print(mat::Matrix{Float64}, digits = 5)
   return s
 end
 
-mutable struct HawkesPoint
-  mark::String # the no. of the process that generated this point
+struct HawkesPoint
   time::Float64
+  mark::String # the webip
 end
 function Base.println(p::HawkesPoint)
   println("mark: $(p.mark) time: $(p.time)")
@@ -40,8 +40,9 @@ function Base.:<(x::HawkesPoint,y::HawkesPoint)
   return x.time < y.time
 end
 
-struct Flowset
+mutable struct Flowset
   enip::String
+  active::Bool
   start_time::Float64
   data::Array{HawkesPoint}
 end
@@ -51,7 +52,7 @@ function main(cmd_line = ARGS)
     "in_file" => "wsa.raw.1M.txt",
     "out_file"=> "fts_flowsets.jld2",
     "rare_file" => "rare_webips.jld2",
-    "max_flowsets" => Int64(50),
+    "max_flowsets" => Int64(5),
     "duration" => Float64(240.0),
   )
   cl = get_vals(defaults,cmd_line) # update defaults with command line values if they are specified
@@ -60,19 +61,19 @@ function main(cmd_line = ARGS)
     println("$key: $val")
   end
   # update defaults (if they appeared on the command line)
-  seed = defaults["seed"]
   in_file = defaults["in_file"]
+  out_file = defaults["out_file"]
   rare_file = defaults["rare_file"]
   max_flowsets = defaults["max_flowsets"]
   duration = defaults["duration"]
 
   # now get rare_webips 
-  rare_webips = Dict{String,Int64}
+  rare_webips = Dict{String,Int64}()
   if !isfile("rare_webips.jld2") #dictionary does not exist
     rare_stream = tryopen("rare_wbips.txt")
     for line in eachline(rare_stream)
       l = tuple(split(line)...)
-      name = l[1]
+      name = String(l[1])
       level = tryparse(Int64,l[2])
       rare_webips[name] = level
     end
@@ -83,37 +84,45 @@ function main(cmd_line = ARGS)
   end
   
   #now read raw wsa data, find a rare_webip, and write 4 minutes of data
-  fts_flowsets = Dict{String,Flowset}
-  wsa_stream = tryopen(infile)
+  fts_flowsets = Dict{String,Flowset}()
+  wsa_stream = tryopen(in_file)
   readline(wsa_stream);readline(wsa_stream) #skip two header lines
   nflowsets = 0
-  for nflowsets <= max_flowsets
+  nstarts = 0
+  while nflowsets < max_flowsets
     if !eof(wsa_stream)
       raw_line = readline(wsa_stream)
     else
       println(std_err,"EOF on $infile after $nflowsets flowsets read")
       exit(1)
     end
-    line = map(String,split(raw_line,"|"))
-    time = myparse(Float64,line[1])
-    wbip = line[6]
-    enip = line[4]
-    if !haskey(fts_flowsets, enip)
-      if wbip in rare_webips # start a new Flowset
+    fields = map(String,split(raw_line,"|"))
+    time = myparse(Float64,fields[1])
+    wbip = fields[6]
+    enip = fields[4]
+#    println("read $enip at $time, wbip = $wbip")
+    if  !(enip in keys(fts_flowsets))
+      if wbip in keys(rare_webips) && nstarts < max_flowsets
+        # start a new Flowset
         data = HawkesPoint[]
-        fts_flowsets[enip] = Flowset(enip,time,data)
-        nflowsets += 1
+        fts_flowsets[enip] = Flowset(enip,true,time,data)
+        println("found trigger $enip at $time")
+        nstarts += 1
       else
-        continue #nothing to do for this record
+        continue # we're not tracking this enip and the webip is common
       end
-    end
-    #OK, we have a flowset for this enip
-    flowset = fts_flowsets[enip]
-    if time < flowset.start_time + duration # we're still recording
-       push!(flowset.data, HawkesPoint(time,wbip))
-    end
-  end
-  @save outfile fts_flowsets
+      # we started a new flowset for this enip
+    end 
+    #OK we have a flowset for this enip
+    if time < fts_flowsets[enip].start_time + duration # and it hasn't expired
+      push!(fts_flowsets[enip].data, HawkesPoint(time,wbip))
+    elseif fts_flowsets[enip].active == true
+      nflowsets += 1
+      fts_flowsets[enip].active = false
+      println("flowset $enip completed at time $time with $(length(fts_flowsets[enip].data)) Hawkes points")
+    end #if
+  end #read loop
+  @save out_file fts_flowsets
 end #main
 
 # execution begins here
