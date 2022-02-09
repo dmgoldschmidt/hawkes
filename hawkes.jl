@@ -16,7 +16,6 @@ using Random
 using LinearAlgebra
 using SpecialFunctions
 using JLD2
-using FileIO
 
 function pretty_print(mat::Matrix{Float64}, digits = 5)
   (nrows,ncols) = size(mat)
@@ -43,8 +42,8 @@ function Base.println(p::Parameters)
 end
 
 mutable struct HawkesPoint
-  mark::String # the no. of the process that generated this point
   time::Float64
+  mark::String # the webip
 end
 function Base.println(p::HawkesPoint)
   println("mark: $(p.mark) time: $(p.time)")
@@ -52,6 +51,13 @@ end
 
 function Base.:<(x::HawkesPoint,y::HawkesPoint)
   return x.time < y.time
+end
+
+mutable struct Flowset
+  enip::String
+  active::Bool
+  start_time::Float64
+  data::Array{HawkesPoint}
 end
 
 function rho_dump(p::Parameters, omega1::Matrix{Float64}, t::Vector{Float64},
@@ -193,17 +199,17 @@ end
 function main(cmd_line = ARGS)    
   defaults = Dict{String,Any}(
     "seed" => 12345,
-    "in_file" => "hawkes_test_data.txt",
-    "rare_file" => "rare_webips.jld2"
+    "in_file" => "fts_flowsets.jld2",
     "max_data" => 50,
     "nstates" => 20,
+    "nenips" => 0, # this gets all flowsets in in_file
     "out_file"=>"",
     "rho_0" => 1, 
     "sigma_0" => 2, # initial child process rate
     "lambda_0" => 10,
     "t_0" => 0.0,
     "max_iters" => 10,
-    "eps" => 1.0e-3'
+    "eps" => 1.0e-3
   )
   cl = get_vals(defaults,cmd_line) # update defaults with command line values if they are specified
   #  println("parameters: $defaults")
@@ -213,8 +219,7 @@ function main(cmd_line = ARGS)
   # update defaults (if they appeared on the command line)
   seed = defaults["seed"]
   in_file = defaults["in_file"]
-  rare_file = defaults["rare_file"]
-  max_data = defaults["max_data"]
+  nenips = defaults["nenips"]
   nstates = defaults["nstates"]
   out_file = defaults["out_file"]
   rho_0 = defaults["rho_0"]
@@ -225,78 +230,68 @@ function main(cmd_line = ARGS)
   eps = defaults["eps"]
 
   #Now read the data and initialize the parameters
-  stream = tryopen(in_file) # this is from util.jl
-  all_lines = readlines(stream)
-  if(ndata == 0)
-    ndata = length(all_lines)
-  end
-  nmarks = 0
-  data = HawkesPoint[]
-  children = Dict{String,Vector{Int64}}()
-  t = fill(0.0,ndata)
-  for i in 1:ndata
-    field = map(string,split(all_lines[i])) # split the ith line into strings
-    push!(data, HawkesPoint(field[1],myparse(Float64,field[2])))
-    if !haskey(children,field[1])
-      children[field[1]] = []
-    end
-    push!(children[field[1]],i) #the child process is associated with the mark of the parent
-    #    println(children)
-    # println(data[i])
-  end
-  tot_time = data[ndata].time - t_0
-  for i in 1:ndata
-    t[i] = (data[i].time - t_0)/tot_time # normalize arrival times to [0,1]
-    if t[i] < 0 || (i > 1 && t[i] <= t[i-1])
-      println(stderr, "negative arrival time or time(s) out of sequence at t[$i].  Bailing out.")
-      exit(1)
-    end
-  end
-  rnd = my_round(3)
-  println("normalized arrival times:\n$(map(rnd,t))")
-  omega = fill(1.0/nstates,nstates)
-  rho = Vector{Float64}(undef,ndata)
-  sigma = fill(sigma_0,ndata)
-  for i in 1:ndata-1
-    j = min(i+nstates,ndata)
-    rho[i] = 10*log(2)/(t[j]-t[i])        # sigma[i]*e^{-rho[i]*(t[j]-t[i])} = 2^{-10}sigma[i]
-  end
-  params = Parameters(ndata,nstates,lambda_0,rho,sigma,omega)
-#  for (key,val) in children
-#    println("mark $(key): children: $(transpose(val))")
-#  end
-    println("omega: $(map(rnd,omega))")
-  omega1 = Matrix{Float64}(undef,ndata,nstates)
+  fts_flowsets = Dict{String,Flowset}()
+  @load in_file fts_flowsets
 
-  last_score = 0.0
-  for niters in 1:max_iters # begin EM iteration ***********************
-    score = Omegas(omega1,params,t) #= compute posterior probability matrix omega1
-    and state probability vector params.omega =# 
-    rnd = my_round(3)
-    #    println(pretty_print(map(rnd,omega1)))
-    println("log likelihood at iteration $niters: $score")
-    if abs((score - last_score)/score) < eps
-      println("relative score = $(abs(score-last_score)/score) < $eps.  Exiting")
-      break
-    end
-    last_score = score
-    if niters < max_iters # re-estimate params
-      println("Begin iteration $niters")
-      # now recompute sigmas for all child processes
-      for i in 1:ndata-nstates-1
-        khat = 0.0
-        for j in 1:min(nstates-1,ndata - i) # compute expected total no. of arrivals for process i 
-          khat += omega1[i+j, j+1]
-        end
-        params.sigma[i] = khat*rho[i]/(1-2^(-10))
+  for enip in keys(fts_flowsets)
+    data = fts_flowsets[enip].data
+    t_0 = fts_flowsets[enip].start_time   
+    ndata = length(data)
+
+    t = fill(0.0,ndata)
+    tot_time = data[ndata].time - t_0
+    for i in 1:ndata
+      t[i] = (data[i].time - t_0)/tot_time # normalize arrival times to [0,1]
+      if t[i] < 0 || (i > 1 && t[i] <= t[i-1])
+        println(stderr, "negative arrival time or time(s) out of sequence at t[$i].  Bailing out.")
+        exit(1)
       end
-      params.lambda = params.omega[1]
-      #      update_params(params,omega1,t) # update lambda, rho, and sigma(rho)
+    end
+    
+    # rnd = my_round(3)
+    # println("normalized arrival times:\n$(map(rnd,t))")
+    omega = fill(1.0/nstates,nstates)
+    rho = Vector{Float64}(undef,ndata)
+    sigma = fill(sigma_0,ndata)
+    for i in 1:ndata-1
+      j = min(i+nstates,ndata)
+      rho[i] = 10*log(2)/(t[j]-t[i])        # sigma[i]*e^{-rho[i]*(t[j]-t[i])} = 2^{-10}sigma[i]
+    end
+    params = Parameters(ndata,nstates,lambda_0,rho,sigma,omega)
+    println("omega: $(map(rnd,omega))")
+    omega1 = Matrix{Float64}(undef,ndata,nstates)
 
-      println("omega: $(map(rnd,params.omega))")
-    end #re-estimation
-  end # EM iteration
-  println("updated parameters: lambda: $(rnd(params.lambda)) \nrho: $(rnd.(params.rho)) \nsigma: $(rnd.(params.sigma))")
+    last_score = 0.0
+    for niters in 1:max_iters # begin EM iteration ***********************
+      score = Omegas(omega1,params,t) #= compute posterior probability matrix omega1
+      and state probability vector params.omega =# 
+      rnd = my_round(3)
+      #    println(pretty_print(map(rnd,omega1)))
+      println("log likelihood at iteration $niters: $score")
+      if abs((score - last_score)/score) < eps
+        println("relative score = $(abs(score-last_score)/score) < $eps.  Exiting")
+        break
+      end
+      last_score = score
+      
+      if niters < max_iters # re-estimate params
+        println("Begin iteration $niters")
+        # now recompute sigmas for all complete child processes
+        for i in 1:ndata-nstates-1
+          khat = 0.0
+          for j in 1:min(nstates-1,ndata - i) # compute expected total no. of arrivals for process i 
+            khat += omega1[i+j, j+1]
+          end
+          params.sigma[i] = khat*rho[i]/(1-2^(-10))
+        end
+        params.lambda = params.omega[1]
+        println("omega: $(map(rnd,params.omega))")
+      end #re-estimation
+    end # EM iteration
+    println("updated parameters for $enip: lambda: $(rnd(params.lambda)) \nrho: $(rnd.(params.rho)) \nsigma: $(rnd.(params.sigma))")
+    nenips -= 1
+    if nenips == 0;break;end
+  end #for enip in keys(fts_flowsets)
 end #main
 
 # execution begins here
@@ -327,3 +322,22 @@ end
   #   println(data[i])
   # end
  
+  # stream = tryopen(in_file) # this is from util.jl
+  # all_lines = readlines(stream)
+  # if(ndata == 0)
+  #   ndata = length(all_lines)
+  # end
+  # nmarks = 0
+  # data = HawkesPoint[]
+  # children = Dict{String,Vector{Int64}}()
+  # t = fill(0.0,ndata)
+  # for i in 1:ndata
+  #   field = map(string,split(all_lines[i])) # split the ith line into strings
+  #   push!(data, HawkesPoint(field[1],myparse(Float64,field[2])))
+  #   if !haskey(children,field[1])
+  #     children[field[1]] = []
+  #   end
+  #   push!(children[field[1]],i) #the child process is associated with the mark of the parent
+  #   #    println(children)
+  #   # println(data[i])
+  # end
