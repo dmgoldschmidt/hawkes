@@ -15,3 +15,14 @@ is a struct with members (time, wbip).  Later I might add more stuff.
 So if the enip just read is in fts_flowsets, I check to see if the current
 time is < start_time + 240.  If it is, I push a new HawkesPoint to data.
 Otherwise, I ignore it and continue reading the raw wsa file.
+
+Wed 09 Feb 2022 04:09:04 PM PST
+I have get_fts_flowsets.jl running, but I realize that the name is inappropriate, and a better name is get_fts_time_series.  I've changed that and struct Flowset is now struct TimeSeries.  One reason for the change is that there are
+often multiple wsa records with the same time stamp.  This doesn't work very well for the Hawkes process logic, so I've also made get_fts_time_series.jl
+check for repeated time stamps, and if it sees one, I don't create a new
+event in the time series, I just add the wbip to the existing HawkesPoint.mark, which I've changed to an String[].  I've also modified Hawkes.jl to load
+and use the dictionary "fts_time_series.jld2" keyed on enip, so it now has
+an outer loop on the key.  I added a few extra command line parameters
+to deal with this. In Hawkes.jl, I now check to see if the first event occurs
+at the start_time of the series, and if it does, I decrement the start time
+by the average interval between successive events in the series.

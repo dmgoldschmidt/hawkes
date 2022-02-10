@@ -235,21 +235,26 @@ function main(cmd_line = ARGS)
 
   for enip in keys(fts_flowsets)
     data = fts_flowsets[enip].data
-    t_0 = fts_flowsets[enip].start_time   
+    t_0 = fts_flowsets[enip].start_time
     ndata = length(data)
-
+    println("processing $enip with $ndata events")
+    if t_0 == data[1].time # reduce t_0 by one tick
+      t_0 -= data[ndata].time - data[1].time)/ndata
+    end
     t = fill(0.0,ndata)
     tot_time = data[ndata].time - t_0
+    
+    avg_delta_t = tot_time/ndata
     for i in 1:ndata
       t[i] = (data[i].time - t_0)/tot_time # normalize arrival times to [0,1]
-      if t[i] < 0 || (i > 1 && t[i] <= t[i-1])
+      if t[i] < 0 || (i > 1 && t[i] < t[i-1])
         println(stderr, "negative arrival time or time(s) out of sequence at t[$i].  Bailing out.")
         exit(1)
       end
     end
     
-    # rnd = my_round(3)
-    # println("normalized arrival times:\n$(map(rnd,t))")
+    rnd = my_round(5)
+    println("normalized arrival times:\n$(map(rnd,t))")
     omega = fill(1.0/nstates,nstates)
     rho = Vector{Float64}(undef,ndata)
     sigma = fill(sigma_0,ndata)
