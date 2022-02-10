@@ -43,7 +43,7 @@ end
 
 mutable struct HawkesPoint
   time::Float64
-  mark::String # the webip
+  mark::Vector{String} # the webips seen at this time
 end
 function Base.println(p::HawkesPoint)
   println("mark: $(p.mark) time: $(p.time)")
@@ -53,7 +53,7 @@ function Base.:<(x::HawkesPoint,y::HawkesPoint)
   return x.time < y.time
 end
 
-mutable struct Flowset
+mutable struct TimeSeries
   enip::String
   active::Bool
   start_time::Float64
@@ -199,7 +199,7 @@ end
 function main(cmd_line = ARGS)    
   defaults = Dict{String,Any}(
     "seed" => 12345,
-    "in_file" => "fts_flowsets.jld2",
+    "in_file" => "fts_time_series.jld2",
     "max_data" => 50,
     "nstates" => 20,
     "nenips" => 0, # this gets all flowsets in in_file
@@ -230,16 +230,16 @@ function main(cmd_line = ARGS)
   eps = defaults["eps"]
 
   #Now read the data and initialize the parameters
-  fts_flowsets = Dict{String,Flowset}()
-  @load in_file fts_flowsets
+  fts_time_series = Dict{String,TimeSeries}()
+  @load in_file fts_time_series
 
-  for enip in keys(fts_flowsets)
-    data = fts_flowsets[enip].data
-    t_0 = fts_flowsets[enip].start_time
+  for enip in keys(fts_time_series)
+    data = fts_time_series[enip].data
+    t_0 = fts_time_series[enip].start_time
     ndata = length(data)
     println("processing $enip with $ndata events")
     if t_0 == data[1].time # reduce t_0 by one tick
-      t_0 -= data[ndata].time - data[1].time)/ndata
+      t_0 -= (data[ndata].time - data[1].time)/ndata
     end
     t = fill(0.0,ndata)
     tot_time = data[ndata].time - t_0
@@ -296,7 +296,7 @@ function main(cmd_line = ARGS)
     println("updated parameters for $enip: lambda: $(rnd(params.lambda)) \nrho: $(rnd.(params.rho)) \nsigma: $(rnd.(params.sigma))")
     nenips -= 1
     if nenips == 0;break;end
-  end #for enip in keys(fts_flowsets)
+  end #for enip in keys(fts_time_series)
 end #main
 
 # execution begins here
