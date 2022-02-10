@@ -30,7 +30,7 @@ end
 
 struct HawkesPoint
   time::Float64
-  mark::Array{String} # the webip
+  mark::Vector{String} # the webip
 end
 function Base.println(p::HawkesPoint)
   println("mark: $(p.mark) time: $(p.time)")
@@ -44,7 +44,7 @@ mutable struct TimeSeries
   enip::String
   active::Bool
   start_time::Float64
-  data::HawkesPoint
+  data::Vector{HawkesPoint}
 end
 
 function main(cmd_line = ARGS)    
@@ -98,11 +98,12 @@ function main(cmd_line = ARGS)
       break
     end
     fields = map(String,split(raw_line,"|"))
-    time = [myparse(Float64,fields[1])]
+    x = myparse(Float64,fields[1])/1.0e9
+    time = round(((((x*1000)%1)*100)%1)*10000,sigdigits = 7)
     wbip = fields[6]
     enip = fields[4]
 #    println("read $enip at $time, wbip = $wbip")
-    if  !(enip in keys(fts_time_series))
+    if  !(enip in keys(fts_time_series)) #have we seen this enip before?
       if wbip in keys(rare_webips) && (max_flowsets > 0 ? nstarts < max_flowsets : true)
         # start a new TimeSeries
         data = HawkesPoint[]
@@ -112,24 +113,25 @@ function main(cmd_line = ARGS)
       else
         continue # we're not tracking this enip and the webip is common
       end
-      # we started a new TimeSeries for this enip
+      # we started a new TimeSeries for this enip (no data yet)
     end 
     #OK we have a TimeSeries for this enip
     time_series = fts_time_series[enip]
     if time < time_series.start_time + duration # and it hasn't expired
       n = length(time_series.data)
-      if n > 1 && time_series.data[n].time == time_series.data[n-1].time
+      if n > 1 && time == time_series.data[n].time
         # don't make a new event with the same time.  Just add the wbip to the existing mark
          push!(time_series.data[n].mark,wbip)
-      else # make a new event
+      else # make a new event and add it to the time series
         push!(fts_time_series[enip].data, HawkesPoint(time,[wbip]))
-      end 
+      end #if n>1 
     elseif fts_time_series[enip].active == true
+      #time has expired.  Stop adding data. 
       nflowsets += 1
       fts_time_series[enip].active = false
       delta_t = rnd(time - fts_time_series[enip].start_time)
       println("flowset $enip completed after $delta_t seconds with $(length(fts_time_series[enip].data)) Hawkes points")
-    end #if
+    end #if time < start_time
   end #read loop
   
   @save out_file fts_time_series
