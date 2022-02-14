@@ -44,7 +44,7 @@ mutable struct TimeSeries
   enip::String
   active::Bool
   start_time::Float64
-  data::Vector{HawkesPoint}
+  events::Vector{HawkesPoint}
 end
 
 function main(cmd_line = ARGS)    
@@ -106,31 +106,31 @@ function main(cmd_line = ARGS)
     if  !(enip in keys(fts_time_series)) #have we seen this enip before?
       if wbip in keys(rare_webips) && (max_flowsets > 0 ? nstarts < max_flowsets : true)
         # start a new TimeSeries
-        data = HawkesPoint[]
-        fts_time_series[enip] = TimeSeries(enip,true,time,data)
+        events = HawkesPoint[]
+        fts_time_series[enip] = TimeSeries(enip,true,time,events)
         println("found trigger $enip at $time")
         nstarts += 1
       else
         continue # we're not tracking this enip and the webip is common
       end
-      # we started a new TimeSeries for this enip (no data yet)
+      # we started a new TimeSeries for this enip (no events yet)
     end 
     #OK we have a TimeSeries for this enip
     time_series = fts_time_series[enip]
     if time < time_series.start_time + duration # and it hasn't expired
-      n = length(time_series.data)
-      if n > 1 && time == time_series.data[n].time
+      n = length(time_series.events)
+      if n > 1 && time == time_series.events[n].time
         # don't make a new event with the same time.  Just add the wbip to the existing mark
-         push!(time_series.data[n].mark,wbip)
+         push!(time_series.events[n].mark,wbip)
       else # make a new event and add it to the time series
-        push!(fts_time_series[enip].data, HawkesPoint(time,[wbip]))
+        push!(fts_time_series[enip].events, HawkesPoint(time,[wbip]))
       end #if n>1 
     elseif fts_time_series[enip].active == true
-      #time has expired.  Stop adding data. 
+      #time has expired.  Stop adding events. 
       nflowsets += 1
       fts_time_series[enip].active = false
       delta_t = rnd(time - fts_time_series[enip].start_time)
-      println("flowset $enip completed after $delta_t seconds with $(length(fts_time_series[enip].data)) Hawkes points")
+      println("flowset $enip completed after $delta_t seconds with $(length(fts_time_series[enip].events)) Hawkes points")
     end #if time < start_time
   end #read loop
   

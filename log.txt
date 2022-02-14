@@ -26,3 +26,11 @@ an outer loop on the key.  I added a few extra command line parameters
 to deal with this. In Hawkes.jl, I now check to see if the first event occurs
 at the start_time of the series, and if it does, I decrement the start time
 by the average interval between successive events in the series.
+
+Mon 14 Feb 2022 09:03:37 AM PST
+OK, I've made some cosmetic changes:  "flowset" -> "time_series", and
+"data" -> "events" are the big two.  So it's now get_fts_time_series, and
+it looks like it's working.  I modified hawkes.jl to work with the new input,
+which is a .jld2 dictionary keyed on enip, and I added an option to output
+a .plt file for input to gnuplot.  I should probably be using the julia Plot
+package, but I think I'll put that off for now.  
