@@ -107,8 +107,8 @@ function main(cmd_line = ARGS)
       if wbip in keys(rare_webips) && (max_flowsets > 0 ? nstarts < max_flowsets : true)
         # start a new TimeSeries
         events = HawkesPoint[]
-        fts_time_series[enip] = TimeSeries(enip,true,time,events)
-        println("found trigger $enip at $time")
+        fts_time_series[enip] = TimeSeries(enip,wbip,true,time,events)
+        println("found trigger $wbip for  $enip at $time")
         nstarts += 1
       else
         continue # we're not tracking this enip and the webip is common
