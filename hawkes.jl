@@ -82,12 +82,16 @@ function Omegas(omega1::Matrix{Float64},p::Parameters,t::Vector{Float64})
         exit(1)
       end
       omega1[i,j] = p.omega[j]*exp(khat*log(khat) - khat - log(t_ij) - loggamma(khat))
+      if isnan(omega1[i,j])
+        println(stderr,"NaN at i = $i, j= $j, khat = $khat, p.lambda = $(p.lambda),  t[i] = $(t[i])")
+        exit(1)
+      end
 #      println("omega1[$i,$j]: ",omega1[i,j])
     end
     rsum = sum(omega1[i,:])
     omega1[i,:] ./= rsum
     score += log(rsum)
-    if score == NaN
+    if rsum <= 0
       println("score == NaN at ($i,$j), khat = $khat")
       exit(1)
     end
@@ -109,7 +113,7 @@ function main(cmd_line = ARGS)
     "nenips" => 0, # 0 gets all time series in in_file. n>0 gets first n.
     "rho_0" => 1, 
     "sigma_0" => 2, # initial child process rate
-    "lambda_0" => 10,
+    "lambda_0" => 1.0, # base process generates all events on average
     "t_0" => 0.0,
     "max_iters" => 10,
     "eps" => 1.0e-3
@@ -136,8 +140,9 @@ function main(cmd_line = ARGS)
   fts_time_series = Dict{String,TimeSeries}()
   @load in_file fts_time_series
   nenips = nseries = length(keys(fts_time_series))
-  
-  for enip in keys(fts_time_series)
+  avg_delta = 0.0
+
+  for enip in keys(fts_time_series) && nenips != 0
     events = fts_time_series[enip].events
     t_0 = fts_time_series[enip].start_time
     nevents = length(events)
@@ -158,16 +163,14 @@ function main(cmd_line = ARGS)
     end
     
     rnd = my_round(5)
-#    println("normalized arrival times:\n$(map(rnd,t))")
+    #    println("normalized arrival times:\n$(map(rnd,t))")
+    lambda = lambda_0/avg_delta_t  # base process generates lambda_0*nevents per unit time 
     omega = fill(1.0/nstates,nstates)
 #    rho = Vector{Float64}(undef,nevents)
     sigma = fill(sigma_0,nevents-1) 
-   rho = fill(-log(.5)/avg_delta_t,nevents)
-    # for i in 1:nevents-1
-    #   rho[i] = log(2)/(t[i+1]-t[i])        
-    # end
-    params = Parameters(nevents,nstates,lambda_0,rho,sigma,omega)
-    println("omega: $(map(rnd,omega))")
+    rho = fill(-log(.5)/avg_delta_t,nevents)
+    params = Parameters(nevents,nstates,lambda,rho,sigma,omega)
+    # println("omega: $(map(rnd,omega))")
     omega1 = Matrix{Float64}(undef,nevents,nstates)
 
     last_score = 0.0
@@ -182,40 +185,46 @@ function main(cmd_line = ARGS)
         break
       end
       last_score = score
+      println("omega: $(map(rnd,params.omega))")
       
       if niters < max_iters # re-estimate params
         println("Begin iteration $niters")
-        # now recompute sigmas for all complete child processes
+        # now recompute sigmas for all child processes
         avg_sigma = 0.0
         for i in 1:nevents-1
           khat = 0.0
           m = min(nstates-1,nevents-i)
-          for j in 1:m  # compute expected total no. of arrivals for process i 
+          for j in 1:m  # compute expected total no. of arrivals for child process i 
             khat += omega1[i+j, j+1]
             if omega1[i+j, j+1] <= 0
               println(stderr,"at i = $i, j = $j: omega1[$(i+j),$(j+1)] = $(omega1[i+j,j+1])")
               exit(1)
-            end
-          end
+            end #if
+          end #for j in 1:m
           params.sigma[i] = khat*rho[i]/(1-exp(-rho[i]*(t[i+m]-t[i])))
           avg_sigma += params.sigma[i]
-        end
-        avg_sigma /= nevents-nstates-1
-#        for i in nevents-nstates:nevents; params.sigma[i] = avg_sigma;end
-        params.lambda = params.omega[1]
-        println("omega: $(map(rnd,params.omega))")
-      end #re-estimation
-    end # EM iteration
+        end #for i in 1:nevents-1
+        avg_sigma /= nevents-1
+      end # if niters < max_iters
+    end # for niters < max_iters (end EM iterations)
     println("updated parameters for $enip: lambda: $(rnd(params.lambda)) \nsigma: $(rnd.(params.sigma))")
     nenips -= 1
     if plot_enip == nseries -nenips
       stream = tryopen(plot_file,"w")
       for i in 1:nevents-1
-        @printf(stream,"%f %f  %s\n",events[i].time, params.sigma[i], events[i].mark)
-      end
+        max_p = 0.0
+        state = 0
+        for j in 1:nstates
+          if omega1[i,j] > max_p; max_p = omega1[i,j]; state = j; end
+        end
+        @printf(stream,"%.3f %.3f  %d (%.3f) %s ",events[i].time, params.sigma[i],state-1,max_p, events[i].mark)
+        println(stream,rnd.(omega1[i,:]))
+      end #for i in 1:nevents-1
       close(stream)
+    end #if plot_enip
+    if nenips == 0
+      break
     end
-    if nenips == 0;break;end
     
   end #for enip in keys(fts_time_series)
 end #main

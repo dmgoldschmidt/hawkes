@@ -42,6 +42,7 @@ end
 
 mutable struct TimeSeries
   enip::String
+  trigger::String
   active::Bool
   start_time::Float64
   events::Vector{HawkesPoint}
