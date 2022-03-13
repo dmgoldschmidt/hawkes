@@ -1,4 +1,4 @@
-#!/home/david/julia-1.6.5/bin/julia
+#!/usr/local/bin/julia
 #import GZip
 if !@isdefined(CommandLine_loaded)
   include("CommandLine.jl")
@@ -142,7 +142,7 @@ function main(cmd_line = ARGS)
   nenips = nseries = length(keys(fts_time_series))
   avg_delta = 0.0
 
-  for enip in keys(fts_time_series) && nenips != 0
+  for enip in keys(fts_time_series) 
     events = fts_time_series[enip].events
     t_0 = fts_time_series[enip].start_time
     nevents = length(events)
@@ -207,7 +207,7 @@ function main(cmd_line = ARGS)
         avg_sigma /= nevents-1
       end # if niters < max_iters
     end # for niters < max_iters (end EM iterations)
-    println("updated parameters for $enip: lambda: $(rnd(params.lambda)) \nsigma: $(rnd.(params.sigma))")
+#    println("updated parameters for $enip: lambda: $(rnd(params.lambda)) \nsigma: $(rnd.(params.sigma))")
     nenips -= 1
     if plot_enip == nseries -nenips
       stream = tryopen(plot_file,"w")

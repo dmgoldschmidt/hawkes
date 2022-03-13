@@ -1,4 +1,4 @@
-#!/home/david/julia-1.6.5/bin/julia
+#!/usr/local/bin/julia
 #import GZip
 if !@isdefined(CommandLine_loaded)
   include("CommandLine.jl")
@@ -41,9 +41,10 @@ end
 
 mutable struct TimeSeries
   enip::String
+  trigger::String
   active::Bool
   start_time::Float64
-  data::Vector{HawkesPoint}
+  events::Vector{HawkesPoint}
 end
 
 function main(cmd_line = ARGS)    
@@ -69,10 +70,11 @@ function main(cmd_line = ARGS)
   for enip in keys(fts_time_series)
     n += 1
     if enip_no >= 1 && n != enip_no; continue; end
-    data = fts_time_series[enip].data
-    println("$(enip): $(length(data)) events")
+    events = fts_time_series[enip].events
+    trigger = fts_time_series[enip].trigger
+    println("enip: $(enip) trigger: $(trigger) ( $(length(events)) events)")
     if verbose
-      for event in data
+      for event in events
         println("$(event.time): $(event.mark)")
       end
     end # if verbose

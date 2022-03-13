@@ -1,5 +1,5 @@
-#!/home/david/julia-1.6.5/bin/julia
-#import GZip
+#!/usr/local/bin/julia
+import GZip
 if !@isdefined(CommandLine_loaded)
   include("CommandLine.jl")
 end
@@ -50,7 +50,8 @@ end
 
 function main(cmd_line = ARGS)    
   defaults = Dict{String,Any}(
-    "in_file" => "wsa.raw.1M.txt",
+    "in_file" => "../wsa/wsa.2013-07-01.gz",
+    "rare_file_raw" => "../rare_wsa_complete.txt",
     "out_file"=> "fts_time_series.jld2",
     "rare_file" => "rare_webips.jld2",
     "max_flowsets" => Int64(5),
@@ -63,20 +64,19 @@ function main(cmd_line = ARGS)
   end
   # update defaults (if they appeared on the command line)
   in_file = defaults["in_file"]
-  out_file = defaults["out_file"]
+  rare_file_raw = defaults["rare_file_raw"]
+  out_file = defaults["out_file"]   
   rare_file = defaults["rare_file"]
   max_flowsets = defaults["max_flowsets"]
   duration = defaults["duration"]
 
   # now get rare_webips 
-  rare_webips = Dict{String,Int64}()
+  rare_webips = Dict{String,String}()
   if !isfile("rare_webips.jld2") #dictionary does not exist
-    rare_stream = tryopen("rare_wbips.txt")
+    rare_stream = tryopen(rare_file_raw)
     for line in eachline(rare_stream)
-      l = tuple(split(line)...)
-      name = String(l[1])
-      level = tryparse(Int64,l[2])
-      rare_webips[name] = level
+      l = map(String,split(line,"|"))
+      rare_webips[l[1]] = l[2]
     end
     close(rare_stream)
     @save "rare_webips.jld2" rare_webips
@@ -86,7 +86,7 @@ function main(cmd_line = ARGS)
   
   #now read raw wsa data, find a rare_webip, and write 4 minutes of data
   fts_time_series = Dict{String,TimeSeries}()
-  wsa_stream = tryopen(in_file)
+  wsa_stream = occursin(".gz",in_file) ? GZip.open(in_file) : open(in_file)
   readline(wsa_stream);readline(wsa_stream) #skip two header lines
   nflowsets = 0
   nstarts = 0
