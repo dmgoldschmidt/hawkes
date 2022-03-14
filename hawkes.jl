@@ -31,7 +31,7 @@ mutable struct Parameters
   nevents::Int64
   nstates::Int64
   lambda::Float64
-  rho::Array{Float64}
+  rho::Float64
   sigma::Array{Float64}
   omega::Array{Float64}
 end
@@ -75,10 +75,10 @@ function Omegas(omega1::Matrix{Float64},p::Parameters,t::Vector{Float64})
         khat = p.lambda*t[i]
       else
         t_ij = t[i] - t[i-j+1]
-        khat = p.sigma[i-j+1]/p.rho[i-j+1]*(1-exp(-p.rho[i-j+1]*t_ij))
+        khat = p.sigma[i-j+1]/p.rho*(1-exp(-p.rho*t_ij))
       end
       if khat <= 0 
-        println(stderr,"at i = $i, j = $j: sigma = $(p.sigma[i-j+1]), rho = $(p.rho[i-j+1]),khat = $khat")
+        println(stderr,"at i = $i, j = $j: sigma = $(p.sigma[i-j+1]), rho = $(p.rho),khat = $khat")
         exit(1)
       end
       omega1[i,j] = p.omega[j]*exp(khat*log(khat) - khat - log(t_ij) - loggamma(khat))
@@ -142,7 +142,8 @@ function main(cmd_line = ARGS)
   nenips = nseries = length(keys(fts_time_series))
   avg_delta = 0.0
 
-  for enip in keys(fts_time_series) && nenips != 0
+  for enip in keys(fts_time_series) 
+    if nenips == 0; break;end
     events = fts_time_series[enip].events
     t_0 = fts_time_series[enip].start_time
     nevents = length(events)
@@ -168,7 +169,8 @@ function main(cmd_line = ARGS)
     omega = fill(1.0/nstates,nstates)
 #    rho = Vector{Float64}(undef,nevents)
     sigma = fill(sigma_0,nevents-1) 
-    rho = fill(-log(.5)/avg_delta_t,nevents)
+    rho = -log(.5)/avg_delta_t
+    println("rho: $rho")
     params = Parameters(nevents,nstates,lambda,rho,sigma,omega)
     # println("omega: $(map(rnd,omega))")
     omega1 = Matrix{Float64}(undef,nevents,nstates)
@@ -201,12 +203,16 @@ function main(cmd_line = ARGS)
               exit(1)
             end #if
           end #for j in 1:m
-          params.sigma[i] = khat*rho[i]/(1-exp(-rho[i]*(t[i+m]-t[i])))
+          params.sigma[i] = khat*rho #/(1-exp(-rho*(t[i+m]-t[i])))
+          if khat > nstates; println(stderr,"khat = $khat at event $i");end
           avg_sigma += params.sigma[i]
         end #for i in 1:nevents-1
         avg_sigma /= nevents-1
       end # if niters < max_iters
     end # for niters < max_iters (end EM iterations)
+    sum_sig = sum(params.sigma)
+    len_sig = length(params.sigma)
+    println("sum sigma = $sum_sig, len sigma = $len_sig, mean sigma/rho = $(sum_sig/(len_sig*params.rho))")
     println("updated parameters for $enip: lambda: $(rnd(params.lambda)) \nsigma: $(rnd.(params.sigma))")
     nenips -= 1
     if plot_enip == nseries -nenips
@@ -382,3 +388,4 @@ end
 # #  println("rho: $(p.rho) sigma: $(p.sigma) q: $q dq: $(dq)")
 # #  exit(0)
 # end
+
