@@ -11,11 +11,12 @@ if !@isdefined(sort_loaded)
 end
 
 using Printf
-using DelimitedFiles
-using Random
-using LinearAlgebra
+#using DelimitedFiles
+#using Random
+#using LinearAlgebra
 using SpecialFunctions
 using JLD2
+using Plots
 
 function pretty_print(mat::Matrix{Float64}, digits = 5)
   (nrows,ncols) = size(mat)
@@ -215,8 +216,10 @@ function main(cmd_line = ARGS)
     println("sum sigma = $sum_sig, len sigma = $len_sig, mean sigma/rho = $(sum_sig/(len_sig*params.rho))")
 #    println("updated parameters for $enip: lambda: $(rnd(params.lambda)) \nsigma: $(rnd.(params.sigma))")
     nenips -= 1
-    if plot_enip == nseries -nenips
+    if plot_enip == nseries - nenips
       stream = tryopen(plot_file,"w")
+      x_vals = fill(0.0,nevents-1)
+      y_vals = fill(0.0,nevents-1)
       for i in 1:nevents-1
         max_p = 0.0
         state = 0
@@ -225,8 +228,22 @@ function main(cmd_line = ARGS)
         end
         @printf(stream,"%.3f %.3f  %d (%.3f) %s ",events[i].time, params.sigma[i],state-1,max_p, events[i].mark)
         println(stream,rnd.(omega1[i,:]))
+        x_vals[i] = events[i].time
+        y_vals[i] = params.sigma[i]
       end #for i in 1:nevents-1
       close(stream)
+      opt::String = ""
+      plot(x_vals,y_vals,show = true)
+      print(stderr,"enter Q to quit, filename to save (.pdf will be appended), or return to continue:  ")
+      opt = readline()
+      if length(opt) > 0
+        if opt[1] == 'Q'; exit(0);
+        elseif opt != ""
+          fname = opt*".pdf"
+          savefig(fname)
+          println(stderr, "plot was saved in ",fname)
+        end
+      end
     end #if plot_enip
     if nenips == 0
       break
