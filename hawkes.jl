@@ -1,4 +1,4 @@
-#!/usr/local/bin/julia
+#!/home/david/julia-1.6.5/bin/julia
 #import GZip
 if !@isdefined(CommandLine_loaded)
   include("CommandLine.jl")
@@ -213,7 +213,7 @@ function main(cmd_line = ARGS)
     sum_sig = sum(params.sigma)
     len_sig = length(params.sigma)
     println("sum sigma = $sum_sig, len sigma = $len_sig, mean sigma/rho = $(sum_sig/(len_sig*params.rho))")
-    println("updated parameters for $enip: lambda: $(rnd(params.lambda)) \nsigma: $(rnd.(params.sigma))")
+#    println("updated parameters for $enip: lambda: $(rnd(params.lambda)) \nsigma: $(rnd.(params.sigma))")
     nenips -= 1
     if plot_enip == nseries -nenips
       stream = tryopen(plot_file,"w")
