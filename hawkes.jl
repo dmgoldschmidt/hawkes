@@ -108,8 +108,8 @@ end
 function main(cmd_line = ARGS)    
   defaults = Dict{String,Any}(
     "in_file" => "fts_time_series.jld2",
-    "plot_file" => "sigma_vs_time.plt",
-    "plot_enip" => 0, # 0 for no plot.  n>0:  plot the n^th time series read
+    "out_file" => "", # default is no output
+    "plot_enip" => 0, # 0 for plot all series.  n>0:  plot the n^th series read
     "nstates" => 10,
     "nenips" => 0, # 0 gets all time series in in_file. n>0 gets first n.
     "rho_0" => 1, 
@@ -126,7 +126,7 @@ function main(cmd_line = ARGS)
   end
   # update defaults (if they appeared on the command line)
   in_file = defaults["in_file"] # where to read the .jld2 file
-  plot_file = defaults["plot_file"]  # where to plot sigma vs time"
+  out_file = defaults["out_file"]  # where to plot sigma vs time"
   plot_enip = defaults["plot_enip"] # which series to plot 
   nenips = defaults["nenips"] # how many series to process
   nstates = defaults["nstates"] # how many states to use
@@ -136,7 +136,10 @@ function main(cmd_line = ARGS)
   t_0 = defaults["t_0"]
   max_iters = defaults["max_iters"]
   eps = defaults["eps"]
-
+  if length(out_file) > 0
+    out_stream = tryopen(out_file,"w")
+  end
+  
   #Now read the data and initialize the parameters
   fts_time_series = Dict{String,TimeSeries}()
   @load in_file fts_time_series
@@ -163,7 +166,6 @@ function main(cmd_line = ARGS)
         exit(1)
       end
     end
-    
     rnd = my_round(5)
     #    println("normalized arrival times:\n$(map(rnd,t))")
     lambda = lambda_0/avg_delta_t  # base process generates lambda_0*nevents per unit time 
@@ -175,7 +177,7 @@ function main(cmd_line = ARGS)
     params = Parameters(nevents,nstates,lambda,rho,sigma,omega)
     # println("omega: $(map(rnd,omega))")
     omega1 = Matrix{Float64}(undef,nevents,nstates)
-
+    
     last_score = 0.0
     for niters in 1:max_iters # begin EM iteration ***********************
       score = Omegas(omega1,params,t) #= compute posterior probability matrix omega1
@@ -214,10 +216,9 @@ function main(cmd_line = ARGS)
     sum_sig = sum(params.sigma)
     len_sig = length(params.sigma)
     println("sum sigma = $sum_sig, len sigma = $len_sig, mean sigma/rho = $(sum_sig/(len_sig*params.rho))")
-#    println("updated parameters for $enip: lambda: $(rnd(params.lambda)) \nsigma: $(rnd.(params.sigma))")
+    #    println("updated parameters for $enip: lambda: $(rnd(params.lambda)) \nsigma: $(rnd.(params.sigma))")
     nenips -= 1
-    if plot_enip == nseries - nenips
-      stream = tryopen(plot_file,"w")
+    if plot_enip == 0 || plot_enip == nseries - nenips
       x_vals = fill(0.0,nevents-1)
       y_vals = fill(0.0,nevents-1)
       for i in 1:nevents-1
@@ -226,30 +227,26 @@ function main(cmd_line = ARGS)
         for j in 1:nstates
           if omega1[i,j] > max_p; max_p = omega1[i,j]; state = j; end
         end
-        @printf(stream,"%.3f %.3f  %d (%.3f) %s ",events[i].time, params.sigma[i],state-1,max_p, events[i].mark)
-        println(stream,rnd.(omega1[i,:]))
+        if length(out_file) > 0
+          @printf(out_stream,"%.3f %.3f  %d (%.3f) %s ",events[i].time, params.sigma[i],state-1,max_p, events[i].mark)
+          println(out_stream,rnd.(omega1[i,:]))
+        end
         x_vals[i] = events[i].time
         y_vals[i] = params.sigma[i]
       end #for i in 1:nevents-1
-      close(stream)
       opt::String = ""
       plot(x_vals,y_vals,show = true)
       print(stderr,"enter Q to quit, filename to save (.pdf will be appended), or return to continue:  ")
       opt = readline()
       if length(opt) > 0
-        if opt[1] == 'Q'; exit(0);
-        elseif opt != ""
-          fname = opt*".pdf"
-          savefig(fname)
-          println(stderr, "plot was saved in ",fname)
-        end
-      end
+        if opt[1] == 'Q'; exit(0);end
+        if !occursin(".",opt); opt = opt*".pdf";end
+        savefig(opt)
+        println(stderr, "plot was saved in ",opt)
+      end #if length(opt) > 0
     end #if plot_enip
-    if nenips == 0
-      break
-    end
-    
   end #for enip in keys(fts_time_series)
+  close(out_stream)
 end #main
 
 # execution begins here
