@@ -109,7 +109,7 @@ function main(cmd_line = ARGS)
   defaults = Dict{String,Any}(
     "in_file" => "fts_time_series.jld2",
     "out_file" => "", # default is no output
-    "plot_enip" => 0, # 0 for plot all series.  n>0:  plot the n^th series read
+    "plot_enip" => 1, # -1:  no plots, 0: plot all series.  n>0:  plot the n^th series read
     "nstates" => 10,
     "nenips" => 0, # 0 gets all time series in in_file. n>0 gets first n.
     "rho_0" => 1, 
@@ -141,7 +141,7 @@ function main(cmd_line = ARGS)
   end
   
   #Now read the data and initialize the parameters
-  fts_time_series = Dict{String,TimeSeries}()
+  fts_time_series = Dict{String, TimeSeries}()
   @load in_file fts_time_series
   nenips = nseries = length(keys(fts_time_series))
   avg_delta = 0.0
@@ -217,23 +217,28 @@ function main(cmd_line = ARGS)
     len_sig = length(params.sigma)
     println("sum sigma = $sum_sig, len sigma = $len_sig, mean sigma/rho = $(sum_sig/(len_sig*params.rho))")
     #    println("updated parameters for $enip: lambda: $(rnd(params.lambda)) \nsigma: $(rnd.(params.sigma))")
-    nenips -= 1
+    if length(out_file) > 0
+      println(out_stream, "\n*** $nevents events for enip $enip with trigger  $(fts_time_series[enip].trigger) at $(fts_time_series[enip].start_time)")
+    end
+    x_vals = Vector{Float64}(undef,nevents-1)
+    y_vals = Vector{Float64}(undef,nevents-1)
+    for i in 1:nevents-1
+#     x_vals = fill(0.0,nevents-1)
+#     y_vals = fill(0.0,nevents-1)
+      max_p = 0.0
+      state = 0
+      for j in 1:nstates
+        if omega1[i,j] > max_p; max_p = omega1[i,j]; state = j; end
+      end
+      x_vals[i] = events[i].time
+      y_vals[i] = params.sigma[i]
+      if length(out_file) > 0
+        @printf(out_stream,"%.3f %.3f  %d (%.3f) %s ",x_vals[i], y_vals[i],state-1,max_p, events[i].mark)
+        println(out_stream,rnd.(omega1[i,:]))
+      end
+    end #for i in 1:nevents-1
     if plot_enip == 0 || plot_enip == nseries - nenips
-      x_vals = fill(0.0,nevents-1)
-      y_vals = fill(0.0,nevents-1)
-      for i in 1:nevents-1
-        max_p = 0.0
-        state = 0
-        for j in 1:nstates
-          if omega1[i,j] > max_p; max_p = omega1[i,j]; state = j; end
-        end
-        if length(out_file) > 0
-          @printf(out_stream,"%.3f %.3f  %d (%.3f) %s ",events[i].time, params.sigma[i],state-1,max_p, events[i].mark)
-          println(out_stream,rnd.(omega1[i,:]))
-        end
-        x_vals[i] = events[i].time
-        y_vals[i] = params.sigma[i]
-      end #for i in 1:nevents-1
+      nenips -= 1
       opt::String = ""
       plot(x_vals,y_vals,show = true)
       print(stderr,"enter Q to quit, filename to save (.pdf will be appended), or return to continue:  ")

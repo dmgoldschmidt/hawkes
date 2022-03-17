@@ -77,3 +77,15 @@ OK, there's something weird going on with the reestimation of the sigmas.
 I commented out the division by 1-e^{-rho*delta_t} and got funny looking
 sigmas.
 
+Wed 16 Mar 2022 10:46:24 AM PDT
+Nothing to say  on the previous entry at the moment, other than I checked
+the logic and the computations and didn't find anything. But on the 3/02
+entry, I think I'm going to try a new collection method.  Instead of collecting
+events for a fixed period of time, I'll collect a fixed number of events (and
+discard anything with too few).  Then because I already normalize time to [0,1],
+I can set a fixed half-life, say  = .01, which will effectively kill the child process
+after 10% of the collection interval. I could adjust this appropriately in the
+last 10% of the interval if it seemed necessary.  Then a model I generate
+from one time series should make sense when scoring a different time
+series.  We'll see!
+
