@@ -1,4 +1,4 @@
-#!/home/david/julia-1.6.5/bin/julia
+# /home/david/julia-1.6.5/bin/julia
 #import GZip
 if !@isdefined(CommandLine_loaded)
   include("CommandLine.jl")
@@ -107,20 +107,25 @@ end
 
 function main(cmd_line = ARGS)    
   defaults = Dict{String,Any}(
-    "in_file" => "fts_time_series.jld2",
+    "in_file" => "new_time_series.jld2",
     "out_file" => "", # default is no output
-    "plot_enip" => 1, # -1:  no plots, 0: plot all series.  n>0:  plot the n^th series read
+    "plot_enip" => -1, # -1:  no plots, 0: plot all series.  n>0:  plot the n^th series read
     "nstates" => 10,
     "nenips" => 0, # 0 gets all time series in in_file. n>0 gets first n.
-    "rho_0" => 1, 
+    "half_life" => .01, # child process intensity will decay to 2^{-10}*initial value after 10% of the interval  
     "sigma_0" => 2, # initial child process rate
     "lambda_0" => 1.0, # base process generates all events on average
     "t_0" => 0.0,
     "max_iters" => 10,
-    "eps" => 1.0e-3
+    "eps" => 1.0e-3,
   )
   cl = get_vals(defaults,cmd_line) # update defaults with command line values if they are specified
   #  println("parameters: $defaults")
+  if "v" in cl.option
+    verbose = true
+  else
+    verbose = false
+  end
   for (key,val) in defaults
     println("$key: $val")
   end
@@ -130,7 +135,7 @@ function main(cmd_line = ARGS)
   plot_enip = defaults["plot_enip"] # which series to plot 
   nenips = defaults["nenips"] # how many series to process
   nstates = defaults["nstates"] # how many states to use
-  rho_0 = defaults["rho_0"]
+  half_life = defaults["half_life"] # decay constant for child processes
   sigma_0 = defaults["sigma_0"]
   lambda_0 = defaults["lambda_0"]
   t_0 = defaults["t_0"]
@@ -146,8 +151,9 @@ function main(cmd_line = ARGS)
   nenips = nseries = length(keys(fts_time_series))
   avg_delta = 0.0
 
-  for enip in keys(fts_time_series) 
+  for enip in keys(fts_time_series)
     if nenips == 0; break;end
+    nenips -= 1
     events = fts_time_series[enip].events
     t_0 = fts_time_series[enip].start_time
     nevents = length(events)
@@ -172,8 +178,8 @@ function main(cmd_line = ARGS)
     omega = fill(1.0/nstates,nstates)
 #    rho = Vector{Float64}(undef,nevents)
     sigma = fill(sigma_0,nevents-1) 
-    rho = -log(.5)/avg_delta_t
-    println("rho: $rho")
+    rho = log(2)/half_life #-log(.5)/avg_delta_t
+    if verbose; println("rho: $rho");end
     params = Parameters(nevents,nstates,lambda,rho,sigma,omega)
     # println("omega: $(map(rnd,omega))")
     omega1 = Matrix{Float64}(undef,nevents,nstates)
@@ -184,16 +190,16 @@ function main(cmd_line = ARGS)
       and state probability vector params.omega =# 
       rnd = my_round(3)
       #    println(pretty_print(map(rnd,omega1)))
-      println("log likelihood at iteration $niters: $score")
+      if verbose; println("log likelihood at iteration $niters: $score");end
       if abs((score - last_score)/score) < eps
         println("relative score = $(abs(score-last_score)/score) < $eps.  Exiting")
         break
       end
       last_score = score
-      println("omega: $(map(rnd,params.omega))")
+      if verbose; println("omega: $(map(rnd,params.omega))"); end
       
       if niters < max_iters # re-estimate params
-        println("Begin iteration $niters")
+        if verbose; println("Begin iteration $niters");end
         # now recompute sigmas for all child processes
         avg_sigma = 0.0
         for i in 1:nevents-1
@@ -215,10 +221,9 @@ function main(cmd_line = ARGS)
     end # for niters < max_iters (end EM iterations)
     sum_sig = sum(params.sigma)
     len_sig = length(params.sigma)
-    println("sum sigma = $sum_sig, len sigma = $len_sig, mean sigma/rho = $(sum_sig/(len_sig*params.rho))")
-    #    println("updated parameters for $enip: lambda: $(rnd(params.lambda)) \nsigma: $(rnd.(params.sigma))")
+    if verbose; println("sum sigma = $sum_sig, len sigma = $len_sig, mean sigma/rho = $(sum_sig/(len_sig*params.rho))");end
     if length(out_file) > 0
-      println(out_stream, "\n*** $nevents events for enip $enip with trigger  $(fts_time_series[enip].trigger) at $(fts_time_series[enip].start_time)")
+      println(out_stream, "\n*** series $(nseries-nenips):  $nevents events for enip $enip with trigger  $(fts_time_series[enip].trigger) at $(fts_time_series[enip].start_time)")
     end
     x_vals = Vector{Float64}(undef,nevents-1)
     y_vals = Vector{Float64}(undef,nevents-1)
@@ -237,8 +242,8 @@ function main(cmd_line = ARGS)
         println(out_stream,rnd.(omega1[i,:]))
       end
     end #for i in 1:nevents-1
+    
     if plot_enip == 0 || plot_enip == nseries - nenips
-      nenips -= 1
       opt::String = ""
       plot(x_vals,y_vals,show = true)
       print(stderr,"enter Q to quit, filename to save (.pdf will be appended), or return to continue:  ")

@@ -89,3 +89,11 @@ last 10% of the interval if it seemed necessary.  Then a model I generate
 from one time series should make sense when scoring a different time
 series.  We'll see!
 
+Sat 19 Mar 2022 02:28:02 PM PDT
+I implemented the fixed no. of events option (and disabled the fixed time interval).
+The result is that the sigmas I find are all around 70 (so far, anyway).  I also
+changed the input from rho to half-life, and I'm using a default half-life of .01.
+Given the normalized time interval of [0,1], this results in a child process intensity
+decaying to .001 of it's initial value after roughly .1 time units (~10%) have elapsed.
+I also fixed a minor bug in the logic for which series to plot, and I implemented
+a verbose option ("-v") on the command line for detailed printout.

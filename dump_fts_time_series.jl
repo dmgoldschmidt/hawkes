@@ -1,4 +1,3 @@
-#!/usr/local/bin/julia
 #import GZip
 if !@isdefined(CommandLine_loaded)
   include("CommandLine.jl")

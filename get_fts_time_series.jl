@@ -1,4 +1,3 @@
-#!/usr/local/bin/julia
 import GZip
 if !@isdefined(CommandLine_loaded)
   include("CommandLine.jl")
@@ -55,7 +54,8 @@ function main(cmd_line = ARGS)
     "out_file"=> "fts_time_series.jld2",
     "rare_file" => "rare_webips.jld2",
     "max_flowsets" => Int64(5),
-    "duration" => Float64(240.0),
+    "max_duration" => Float64(240.0),
+    "max_events" => Int64(250)
   )
   cl = get_vals(defaults,cmd_line) # update defaults with command line values if they are specified
   #  println("parameters: $defaults")
@@ -68,7 +68,8 @@ function main(cmd_line = ARGS)
   out_file = defaults["out_file"]   
   rare_file = defaults["rare_file"]
   max_flowsets = defaults["max_flowsets"]
-  duration = defaults["duration"]
+  max_duration = defaults["max_duration"]
+  max_events = defaults["max_events"]
 
   # now get rare_webips 
   rare_webips = Dict{String,String}()
@@ -93,7 +94,7 @@ function main(cmd_line = ARGS)
   rnd = my_round(5)
   while max_flowsets > 0 ? nflowsets < max_flowsets : true
     if !eof(wsa_stream)
-      raw_line = readline(wsa_stream)
+      raw_line = readline(wsa_stream) # read the next line of raw wsa data
     else
       println(stderr,"EOF on $in_file after $nflowsets flowsets read")
       break
@@ -104,7 +105,7 @@ function main(cmd_line = ARGS)
     wbip = fields[6]
     enip = fields[4]
 #    println("read $enip at $time, wbip = $wbip")
-    if  !(enip in keys(fts_time_series)) #have we seen this enip before?
+    if  !(enip in keys(fts_time_series)) #have we seen this enip before or not?
       if wbip in keys(rare_webips) && (max_flowsets > 0 ? nstarts < max_flowsets : true)
         # start a new TimeSeries
         events = HawkesPoint[]
@@ -112,28 +113,34 @@ function main(cmd_line = ARGS)
         println("found trigger $wbip for  $enip at $time")
         nstarts += 1
       else
-        continue # we're not tracking this enip and the webip is common
+        continue # we're not tracking this enip or the webip is common
       end
       # we started a new TimeSeries for this enip (no events yet)
-    end 
+    end #if enip not in keys
+    
     #OK we have a TimeSeries for this enip
     time_series = fts_time_series[enip]
-    if time < time_series.start_time + duration # and it hasn't expired
+    if time_series.active == false
+      continue # This time series is no longer active
+    end
+    if time < time_series.start_time + max_duration && length(time_series.events) < max_events
+      # it hasn't expired
       n = length(time_series.events)
       if n > 1 && time == time_series.events[n].time
         # don't make a new event with the same time.  Just add the wbip to the existing mark
          push!(time_series.events[n].mark,wbip)
       else # make a new event and add it to the time series
-        push!(fts_time_series[enip].events, HawkesPoint(time,[wbip]))
+        push!(time_series.events, HawkesPoint(time,[wbip]))
+        println("adding event # $(length(time_series.events)) at $time")
       end #if n>1 
     elseif fts_time_series[enip].active == true
-      #time has expired.  Stop adding events. 
+      #time has expired or we have the max. no. of events.  Stop adding events. 
       nflowsets += 1
-      fts_time_series[enip].active = false
+      time_series.active = false
       delta_t = rnd(time - fts_time_series[enip].start_time)
       println("flowset $enip completed after $delta_t seconds with $(length(fts_time_series[enip].events)) Hawkes points")
     end #if time < start_time
-  end #read loop
+  end #while nflowsets < max_flowsets
   
   @save out_file fts_time_series
 end #main
