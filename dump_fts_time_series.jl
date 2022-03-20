@@ -50,17 +50,18 @@ function main(cmd_line = ARGS)
   defaults = Dict{String,Any}(
     "in_file" => "fts_time_series.jld2",
     "enip_no" => 0,
-    "verbose" => false,
   )
   cl = get_vals(defaults,cmd_line) # update defaults with command line values if they are specified
-  #  println("parameters: $defaults")
+  verbose = false
+  if "v" in cl.option
+    verbose = true
+  end
   for (key,val) in defaults
     println("$key: $val")
   end
   # update defaults (if they appeared on the command line)
   in_file = defaults["in_file"]
   enip_no = defaults["enip_no"]
-  verbose = defaults["verbose"]
   
   fts_time_series = Dict{String,TimeSeries}()
   @load in_file fts_time_series #load the data dictionary (keyed on enip)

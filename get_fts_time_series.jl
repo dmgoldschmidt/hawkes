@@ -29,7 +29,7 @@ end
 
 struct HawkesPoint
   time::Float64
-  mark::Vector{String} # the webip
+  mark::Vector{String} # the webip(s) 
 end
 function Base.println(p::HawkesPoint)
   println("mark: $(p.mark) time: $(p.time)")
@@ -59,6 +59,10 @@ function main(cmd_line = ARGS)
   )
   cl = get_vals(defaults,cmd_line) # update defaults with command line values if they are specified
   #  println("parameters: $defaults")
+  verbose = false
+  if "v" in cl.option
+    verbose = true
+  end
   for (key,val) in defaults
     println("$key: $val")
   end
@@ -100,10 +104,13 @@ function main(cmd_line = ARGS)
       break
     end
     fields = map(String,split(raw_line,"|"))
-    x = myparse(Float64,fields[1])/1.0e9
-    time = round(((((x*1000)%1)*100)%1)*10000,sigdigits = 7)
+    x = myparse(Float64,fields[1])/1.0e9 # get the raw unix time
+    time = round(((((x*1000)%1)*100)%1)*10000,sigdigits = 7) # truncate to 3 decimals
     wbip = fields[6]
     enip = fields[4]
+    fqdn = fields[8]
+    threat = fields[15]
+    
 #    println("read $enip at $time, wbip = $wbip")
     if  !(enip in keys(fts_time_series)) #have we seen this enip before or not?
       if wbip in keys(rare_webips) && (max_flowsets > 0 ? nstarts < max_flowsets : true)
@@ -125,13 +132,14 @@ function main(cmd_line = ARGS)
     end
     if time < time_series.start_time + max_duration && length(time_series.events) < max_events
       # it hasn't expired
+      mark = wbip*":"*fqdn*" "*threat
       n = length(time_series.events)
       if n > 1 && time == time_series.events[n].time
         # don't make a new event with the same time.  Just add the wbip to the existing mark
-         push!(time_series.events[n].mark,wbip)
+         push!(time_series.events[n].mark,mark)
       else # make a new event and add it to the time series
-        push!(time_series.events, HawkesPoint(time,[wbip]))
-        println("adding event # $(length(time_series.events)) at $time")
+        push!(time_series.events, HawkesPoint(time,[mark]))
+        if verbose; println("adding event # $(length(time_series.events)) at $time"); end
       end #if n>1 
     elseif fts_time_series[enip].active == true
       #time has expired or we have the max. no. of events.  Stop adding events. 

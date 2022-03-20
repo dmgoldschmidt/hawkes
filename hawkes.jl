@@ -1,4 +1,3 @@
-# /home/david/julia-1.6.5/bin/julia
 #import GZip
 if !@isdefined(CommandLine_loaded)
   include("CommandLine.jl")
@@ -107,7 +106,7 @@ end
 
 function main(cmd_line = ARGS)    
   defaults = Dict{String,Any}(
-    "in_file" => "new_time_series.jld2",
+    "in_file" => "fts_time_series.jld2",
     "out_file" => "", # default is no output
     "plot_enip" => -1, # -1:  no plots, 0: plot all series.  n>0:  plot the n^th series read
     "nstates" => 10,
@@ -121,10 +120,9 @@ function main(cmd_line = ARGS)
   )
   cl = get_vals(defaults,cmd_line) # update defaults with command line values if they are specified
   #  println("parameters: $defaults")
+  verbose = false
   if "v" in cl.option
     verbose = true
-  else
-    verbose = false
   end
   for (key,val) in defaults
     println("$key: $val")
@@ -256,7 +254,7 @@ function main(cmd_line = ARGS)
       end #if length(opt) > 0
     end #if plot_enip
   end #for enip in keys(fts_time_series)
-  close(out_stream)
+  if out_stream != ""; close(out_stream); end
 end #main
 
 # execution begins here
