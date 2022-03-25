@@ -236,8 +236,8 @@ function main(cmd_line = ARGS)
       x_vals[i] = events[i].time
       y_vals[i] = params.sigma[i]
       if length(out_file) > 0
-        @printf(out_stream,"%.3f %.3f  %d (%.3f) %s ",x_vals[i], y_vals[i],state-1,max_p, events[i].mark)
-        println(out_stream,rnd.(omega1[i,:]))
+        @printf(out_stream,"%.3f %.3f  %d (%.3f) %s\n",x_vals[i], y_vals[i],state-1,max_p, events[i].mark)
+#        println(out_stream,rnd.(omega1[i,:]))
       end
     end #for i in 1:nevents-1
     
