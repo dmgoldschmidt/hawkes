@@ -117,7 +117,7 @@ function main(cmd_line = ARGS)
         # start a new TimeSeries
         events = HawkesPoint[]
         fts_time_series[enip] = TimeSeries(enip,wbip,true,time,events)
-        println("found trigger $wbip for  $enip at $time")
+        if verbose; println("found trigger $wbip for  $enip at $time");end
         nstarts += 1
       else
         continue # we're not tracking this enip or the webip is common
@@ -146,7 +146,7 @@ function main(cmd_line = ARGS)
       nflowsets += 1
       time_series.active = false
       delta_t = rnd(time - fts_time_series[enip].start_time)
-      println("flowset $enip completed after $delta_t seconds with $(length(fts_time_series[enip].events)) Hawkes points")
+      if verbose; println("flowset $enip completed after $delta_t seconds with $(length(fts_time_series[enip].events)) Hawkes points"); end
     end #if time < start_time
   end #while nflowsets < max_flowsets
   
